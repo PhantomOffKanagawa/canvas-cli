@@ -84,9 +84,9 @@ def init_command(args):
     """Inspired by npm init"""
 
     # Check if user requested the TUI interface
-    if args['tui']:
+    if args['fallback_tui']:
         # Run the TUI to select course and assignment
-        course_id, assignment_id, course_name, assignment_name = run_tui(args['fallback'])
+        course_id, assignment_id, course_name, assignment_name = run_tui(args['fallback_tui'])
         
         # Check if course_id and assignment_id are provided
         # If not, exit the function
@@ -147,7 +147,7 @@ Press ^C at any time to quit."""
         prompt_for_value_and_set("course name: ", "course_name", old_config, config, args['course_name'])
         prompt_for_value_and_set("assignment id: ", "assignment_id", old_config, config, args['assignment_id'])
         prompt_for_value_and_set("course id: ", "course_id", old_config, config, args['course_id'])
-        prompt_for_value_and_set("default submission file: ", "default_upload", old_config, config, args['file'])
+        prompt_for_value_and_set("default submission file: ", "default_upload", old_config, config, args['default_file'])
 
         # Get the current working directory from the command line
         config_dir = Path.cwd()

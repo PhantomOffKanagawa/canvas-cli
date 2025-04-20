@@ -121,6 +121,70 @@ def setup_init_parser(subparsers: argparse.ArgumentParser) -> None:
     init_parser.add_argument("-t", "--tui", help="Select values from a User Interface", action="store_true")
     init_parser.add_argument("--fallback", help="Use fallback tui", action="store_true")
 
+def setup_init_parser(subparsers: argparse._SubParsersAction) -> None:
+    """Configure the `init` command to initialize a Canvas project in the current directory."""
+
+    init = subparsers.add_parser(
+        "init",
+        help="Initialize a Canvas assignment folder with metadata and default settings."
+    )
+
+    # ───────────────────── Identification Options ─────────────────────
+    identify = init.add_argument_group("Assignment Identification")
+    identify.add_argument(
+        "-cid", "--course_id",
+        dest="course_id",
+        metavar="COURSE_ID",
+        type=int,
+        help="Canvas Course ID (integer)."
+    )
+    identify.add_argument(
+        "-aid", "--assignment_id",
+        dest="assignment_id",
+        metavar="ASSIGNMENT_ID",
+        type=int,
+        help="Canvas Assignment ID (integer)."
+    )
+    identify.add_argument(
+        "-t", "--tui",
+        dest="tui",
+        action="store_true",
+        help="Use interactive Text-based User Interface to select course/assignment."
+    )
+    identify.add_argument(
+        "--fallback",
+        dest="fallback_tui",
+        action="store_true",
+        help="Fallback to a basic TUI if the full interface is unavailable."
+    )
+
+    # ───────────────────── Naming Options ─────────────────────
+    naming = init.add_argument_group("Naming and Metadata")
+    naming.add_argument(
+        "-cn", "--course-name",
+        dest="course_name",
+        metavar="COURSE_NAME",
+        type=str,
+        help="Readable name for the course (used in folder structure or metadata)."
+    )
+    naming.add_argument(
+        "-an", "--assignment-name",
+        dest="assignment_name",
+        metavar="ASSIGNMENT_NAME",
+        type=str,
+        help="Readable name for the assignment."
+    )
+
+    # ───────────────────── File Setup Options ─────────────────────
+    files = init.add_argument_group("File Configuration")
+    files.add_argument(
+        "-f", "--file",
+        dest="default_file",
+        metavar="FILE_PATH",
+        type=str,
+        help="Path to the default file to submit (e.g., main.py, report.pdf)."
+    )
+
 def setup_push_parser(subparsers: argparse.ArgumentParser) -> None:
     """Set up the push command parser"""
     push_parser = subparsers.add_parser("push", help="Submit an assignment to Canvas")
