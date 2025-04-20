@@ -58,14 +58,14 @@ class FuzzySearch:
             if word.startswith(term):
                 score = max(score, 60 - i)
         
-        # Sequential character matching (fuzzy match)
+        # Fuzzy matching (allowing non-consecutive matches with minor differences)
         name_score = FuzzySearch.fuzzy_contains(name, term)
         code_score = FuzzySearch.fuzzy_contains(code, term) if code else 0
         desc_score = FuzzySearch.fuzzy_contains(desc, term) if desc else 0
         
         score = max(score, name_score, code_score, desc_score)
         return score
-    
+
     @staticmethod
     def fuzzy_contains(text: str, pattern: str) -> int:
         """Check if text contains pattern in a fuzzy way and return a score
@@ -79,27 +79,30 @@ class FuzzySearch:
         """
         if not text or not pattern:
             return 0
-            
+
+        # Try strict sequential match (all pattern chars in order)
         i, j = 0, 0
-        consecutive = 0
-        total_matched = 0
-        
+        first_match = -1
+        gaps = 0
         while i < len(text) and j < len(pattern):
             if text[i] == pattern[j]:
-                consecutive += 1
-                total_matched += 1
+                if first_match == -1:
+                    first_match = i
                 j += 1
             else:
-                consecutive = 0
+                gaps += 1
             i += 1
-        
-        if j == len(pattern):  # All pattern chars found
-            # Score based on:
-            # 1. How much of the pattern matched consecutively
-            # 2. How early in the text the pattern was found
-            return 50 - (i - total_matched) + (consecutive * 2)
+
+        if j == len(pattern):
+            # Score based on how early the match starts, number of gaps, and pattern length
+            base = 50
+            penalty = (first_match if first_match != -1 else 0) + gaps
+            bonus = max(0, len(pattern) - gaps)
+            return base + bonus - penalty
+
+        # No fuzzy match found
         return 0
-    
+
     @staticmethod
     def filter_and_sort_items(items: List[Dict], search_text: str) -> List[Dict]:
         """Filter and sort items by search text

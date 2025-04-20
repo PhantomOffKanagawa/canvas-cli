@@ -47,3 +47,6 @@ canvas.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Possibly Real API calls
+mock_data/

@@ -1,5 +1,6 @@
 """
-Command-line interface module for Canvas CLI
+CLI Manager Module for Canvas CLI Tool
+Handles command line interface for Canvas CLI tool and its subcommands.
 """
 
 import json
