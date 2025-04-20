@@ -400,7 +400,6 @@ def pull_command(args):
                 # Convert the PDF to Markdown
                 pdf_path = Path(pdf)
                 result = md.convert(pdf_path)
-                print(result.text_content)
                 markdown_pdfs.append(result.text_content)
 
             # If --delete is passed, delete the PDFs after conversion
