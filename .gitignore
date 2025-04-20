@@ -47,3 +47,6 @@ canvas.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Ignore Test Files
+test/

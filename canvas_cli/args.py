@@ -8,8 +8,7 @@ from typing import Callable, Dict
 
 def create_parser() -> argparse.ArgumentParser:
     """Create the main argument parser for Canvas CLI"""
-    
-    # Create the main parser
+      # Create the main parser
     parser = argparse.ArgumentParser(description="Canvas CLI tool")
     # Subparsers for different commands
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
@@ -20,8 +19,12 @@ def create_parser() -> argparse.ArgumentParser:
     
     # Init command
     setup_init_parser(subparsers)
-      # Push command
+    
+    # Push command
     setup_push_parser(subparsers)
+    
+    # Pull command
+    setup_pull_parser(subparsers)
     
     # Status command
     setup_status_parser(subparsers)
@@ -124,6 +127,24 @@ def setup_push_parser(subparsers: argparse.ArgumentParser) -> None:
     push_parser.add_argument("-cid", "--course_id", metavar="id", type=int, help="Course ID")
     push_parser.add_argument("-aid", "--assignment_id", metavar="id", type=int, help="Assignment ID")
     push_parser.add_argument("-f", "--file", metavar="file", type=str, help="Path to the file to submit (optional if set during init)")
+
+def setup_pull_parser(subparsers: argparse.ArgumentParser) -> None:
+    """Set up the pull command parser"""
+    pull_parser = subparsers.add_parser("pull", help="Download assignment description as README.md")
+    pull_parser.add_argument("-cid", "--course_id", metavar="id", type=int, help="Course ID")
+    pull_parser.add_argument("-aid", "--assignment_id", metavar="id", type=int, help="Assignment ID")
+    pull_parser.add_argument("-o", "--output", metavar="file", type=str, default="README.md", help="Output file name (default: README.md)")
+    pull_parser.add_argument("-f", "--force", action="store_true", help="Overwrite existing file if it exists")
+    pull_parser.add_argument("-html", action="store_true", help="Keeps description as HTML")
+    pull_parser.add_argument("-pdf", action="store_true", help="Crawl description and download PDFs")
+    pull_parser.add_argument("--pages", action="store_true", help="Crawl description and download pages")
+    pull_parser.add_argument("-in", "--integrated", action="store_true", help="NI - Integrate Crawled Material into README.md")
+    pull_parser.add_argument("-cnv", "--convert", action="store_true", help="NI - Convert all Crawled Material into Markdown")
+    pull_parser.add_argument("-de", "--delete_after", action="store_true", help="Delete unconverted crawl after processing")
+    pull_parser.add_argument("-od", "--output_directory", metavar="directory", type=str, default="./canvas-page", help="Where to place all crawled materials (README.md will be placed according to --output)")
+    pull_parser.add_argument("-t", "--tui", action="store_true", help="Use the TUI to select course and assignment")
+    pull_parser.add_argument("--fallback", help="Use fallback tui", action="store_true")
+    # TODO: THIS IS A MESS, CLEARLY NEEDS REFACTORING
 
 def setup_status_parser(subparsers: argparse.ArgumentParser) -> None:
     """Set up the status command parser"""
