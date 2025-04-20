@@ -108,11 +108,11 @@ def setup_config_parser(subparsers) -> None:
 def setup_init_parser(subparsers) -> None:
     """Set up the init command parser"""
     init_parser = subparsers.add_parser("init", help="Initialize a Canvas project in the current directory")
-    init_parser.add_argument("-cid", "--course_id", help="NI - Course ID")
-    init_parser.add_argument("-aid", "--assignment_id", help="NI - Assignment ID")
-    init_parser.add_argument("-cn", "--course_name", help="NI - Course name")
-    init_parser.add_argument("-an", "--assignment_name", help="NI - Assignment name")
-    init_parser.add_argument("-f", "--file", help="NI - Path to the default file to submit")
+    init_parser.add_argument("-cid", "--course_id", help="Course ID")
+    init_parser.add_argument("-aid", "--assignment_id", help="Assignment ID")
+    init_parser.add_argument("-cn", "--course_name", help="Course name")
+    init_parser.add_argument("-an", "--assignment_name", help="Assignment name")
+    init_parser.add_argument("-f", "--file", help="Path to the default file to submit")
 
 def setup_push_parser(subparsers) -> None:
     """Set up the push command parser"""

@@ -102,23 +102,23 @@ Press ^C at any time to quit."""
 
     # Helper function to prompt for a value and set it in the config
     # with a default value of the old config if it exists
-    def prompt_for_value_and_set(prompt, key, old_object, object):
+    def prompt_for_value_and_set(prompt, key, old_object, object, default=None):
         """Prompt for a value with a default and set it in the config"""
         if old_object and key in old_object:
-            prompt += f"({old_object[key]}) "
+            prompt += f"({default or old_object[key]}) "
         
-        new_value = input(prompt).strip() or (old_object[key] if old_object and key in old_object else "")
+        new_value = input(prompt).strip() or default or (old_object[key] if old_object and key in old_object else "")
         if new_value != "":
             object[key] = new_value
         return object
     
     try:
-        # Get vakyes from the user
-        prompt_for_value_and_set("assignment name: ", "assignment_name", old_config, config)
-        prompt_for_value_and_set("course name: ", "course_name", old_config, config)
-        prompt_for_value_and_set("assignment id: ", "assignment_id", old_config, config)
-        prompt_for_value_and_set("course id: ", "course_id", old_config, config)
-        prompt_for_value_and_set("default submission file: ", "default_upload", old_config, config)
+        # Get values from the user
+        prompt_for_value_and_set("assignment name: ", "assignment_name", old_config, config, args.assignment_name)
+        prompt_for_value_and_set("course name: ", "course_name", old_config, config, args.course_name)
+        prompt_for_value_and_set("assignment id: ", "assignment_id", old_config, config, args.assignment_id)
+        prompt_for_value_and_set("course id: ", "course_id", old_config, config, args.course_id)
+        prompt_for_value_and_set("default submission file: ", "default_upload", old_config, config, args.file)
 
         # Get the current working directory from the command line
         config_dir = Path.cwd()
