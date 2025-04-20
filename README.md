@@ -134,12 +134,10 @@ Future improvements and features planned for Canvas CLI:
 
 Contributions are welcome! Feel free to submit pull requests or open issues to improve the tool.
 
----
-
-Made with ❤️ by a student who was tired of clicking through Canvas
-
----
-
 ## 🔗 Related Projects
 
 Tired of clicking into a file module to download it? Try [canvas-file-downloader](https://github.com/PhantomOffKanagawa/canvas-file-downloader) for a simple extension to download files from Canvas.
+
+---
+
+Made with ❤️ by a student who was tired of clicking through Canvas
