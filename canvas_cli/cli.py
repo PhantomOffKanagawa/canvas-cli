@@ -1,11 +1,18 @@
+"""
+Command-line interface module for Canvas CLI
+"""
+
 import json
 from pathlib import Path
 import sys
 import os
+import pydoc
 
 from .config import Config
-from .assignment import submit_assignment
+from .api import CanvasAPI, format_date
 from .args import parse_args_and_dispatch
+from .tui import run_tui
+from .status_helpers import show_global_status, show_local_status
 
 def config_command(args):
     """Handle command line arguments for configuration"""
@@ -76,12 +83,32 @@ def init_command(args):
     """Handle the init command to create a local .canvas-cli directory"""
     """Inspired by npm init"""
 
+    # Check if user requested the TUI interface
+    if args.tui:
+        # Run the TUI to select course and assignment
+        course_id, assignment_id, course_name, assignment_name = run_tui(args.fallback)
+        
+        # Check if course_id and assignment_id are provided
+        # If not, exit the function
+        if not course_id or not assignment_id:
+            return
+        
+        # Update args with values from TUI
+        args.course_id = course_id
+        args.assignment_id = assignment_id
+        args.course_name = course_name
+        args.assignment_name = assignment_name
+        
+        print(f"Selected: {course_name} (ID: {course_id})")
+        print(f"Assignment: {assignment_name} (ID: {assignment_id})")
+        
     # Check if the current directory is a valid project directory
     # If so, use existing values as defaults
     try:
         old_config = Config.load_project_config()
     except Exception as e:
         print(f"Error loading local configuration: {e}")
+        old_config = {}
         return
 
     message = """This utility will walk you through creating a canvas.json file.
@@ -97,15 +124,17 @@ Press ^C at any time to quit."""
 
     print(message)
 
-    # Make config 
-    config = {}
+    # Make config
+    config = old_config
 
     # Helper function to prompt for a value and set it in the config
     # with a default value of the old config if it exists
     def prompt_for_value_and_set(prompt, key, old_object, object, default=None):
         """Prompt for a value with a default and set it in the config"""
-        if old_object and key in old_object:
-            prompt += f"({default or old_object[key]}) "
+        if default is not None:
+            prompt += f"({default}) "
+        elif old_object and key in old_object:
+            prompt += f"({old_object[key]}) "
         
         new_value = input(prompt).strip() or default or (old_object[key] if old_object and key in old_object else "")
         if new_value != "":
@@ -168,7 +197,7 @@ def push_command(args):
     # If file is not provided, try to get from local config
     if not file_path:
         local_config = Config.load_project_config()
-        if local_config and "file_path" in local_config:
+        if local_config and "default_upload" in local_config:
             file_path = local_config.get("default_upload")
 
     # If missing any required arguments, show error and exit
@@ -205,8 +234,76 @@ def push_command(args):
         if 'f' in locals():
             f.close()
 
-    # Submit the assignment
-    submit_assignment(course_id, assignment_id, file_path)
+    # Create API client and submit the assignment
+    try:
+        api = CanvasAPI()
+        api.submit_assignment(course_id, assignment_id, file_path)
+    except ValueError as e:
+        print(f"Error: {e}")
+        return
+
+def status_command(args):
+    """Handle the status command to get assignment and course information"""
+    # Initialize API client
+    try:
+        api = CanvasAPI()
+    except ValueError as e:
+        print(f"Error: {e}")
+        return
+
+    # Check if global view is requested
+    if args.global_view:
+        show_global_status(api, args)
+        return
+
+    # Determine if we should use TUI to select course/assignment
+    if args.tui:
+        # Run the TUI to select course and assignment
+        course_id, assignment_id, course_name, assignment_name = run_tui(fallback=args.fallback)
+        
+        if not course_id or not assignment_id:
+            print("Status check cancelled.")
+            return
+        
+        # Update args with values from TUI
+        args.course_id = course_id
+        args.assignment_id = assignment_id
+    
+    # Get course_id and assignment_id from args or config
+    course_id = args.course_id
+    assignment_id = args.assignment_id
+    
+    # If not provided, try to get from local config
+    if not course_id or not assignment_id:
+        local_config = Config.load_project_config()
+        if local_config:
+            if not course_id:
+                course_id = local_config.get("course_id")
+            if not assignment_id:
+                assignment_id = local_config.get("assignment_id")
+    
+    # If still missing required arguments, show error and exit
+    if not course_id:
+        print("Error: Missing course_id.")
+        print("Please provide a course ID with --course_id or select one using --tui.")
+        return
+    
+    show_local_status(args, api, course_id, assignment_id)
+
+def help_command(args):
+    """Handle the help command to show help information"""
+    if args.help_command:
+        # Show help for a specific command
+        print(f"Help for command '{args.help_command}':")
+        # Use pydoc to show help
+        # pydoc.pager(pydoc.render_doc(args.help_command))
+    else:
+        print("Available commands:")
+        print("  config  - Configure Canvas API settings")
+        print("  init    - Initialize a Canvas project")
+        print("  push    - Submit an assignment to Canvas")
+        print("  status  - Get status information about assignments and courses")
+        print("  help    - Show help information")
 
 def main():
     """Main CLI entry point"""
@@ -214,7 +311,9 @@ def main():
     command_handlers = {
         "config": config_command,
         "init": init_command,
-        "push": push_command
+        "push": push_command,
+        "status": status_command,
+        "help": help_command
     }
     
     # Parse arguments and dispatch to the appropriate handler
