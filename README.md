@@ -125,7 +125,9 @@ This project is open source and available under the GPL v3 License.
 Future improvements and features planned for Canvas CLI:
 
 - 🔄 Consider git remote paradigm over npm package.json for `canvas init`
-- ⬇️ Add `canvas pull` to download current submissions and assignment descriptions
+- ⬇️ ~~Add `canvas pull` to download current submissions and assignment descriptions~~
+  - 🕷️ Add more crawling options like docx, random links, videos, etc.
+  - 🫠 Rework commands and options to be cleaner, find paradigm like rsync or actual git pull 
 - ⚙️ Implement cascading config scope like git
 - 🔍 ~~Build a TUI for getting course ID and assignment ID from name~~
 - 📊 Add ability to retrieve versioning of submissions

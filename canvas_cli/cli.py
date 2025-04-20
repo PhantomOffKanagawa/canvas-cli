@@ -421,7 +421,7 @@ def pull_command(args):
                     except Exception as e:
                         print(f"Error deleting directory: {e}")
         except ImportError:
-            print("Please install the required modules: pdf2markdown")
+            print("Please install the required modules: markitdown[pdf]")
         except Exception as e:
             print(f"Error: {e}")
 
