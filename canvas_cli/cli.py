@@ -20,62 +20,62 @@ def config_command(args):
         args = type('Args', (), {})()
 
     # Check if there is no subcommand
-    if args['config_command'] == None:
+    if args.config_command == None:
         print("error: no action specified")
         print("See 'canvas config --help' for available actions")
         return
     
     # Default scope to 'global' if not provided
     # TODO: Cascade the scope from local to global if not provided
-    args['scope'] = "global" if args['scope'] is None else args['scope']
+    args.scope = "global" if args.scope is None else args.scope
 
-    if args['config_command'] == "list":
+    if args.config_command == "list":
         # Handle list command
         try:
             # List all settings from respective configuration
-            if args['scope'] == "global":
+            if args.scope == "global":
                 config = Config.load_global()
                 if config is None:
                     print("No global configuration found.")
                     return
                 for key, value in config.items():
-                    print(f"{key}{'' if args['name_only'] else ': ' + value}")
-            elif args['scope'] == "local":
+                    print(f"{key}{'' if args.name_only else ': ' + value}")
+            elif args.scope == "local":
                 config = Config.load_project_config()
                 if config is None:
                     print("No local configuration found.")
                     return
                 for key, value in config.items():
-                    print(f"{key}{'' if args['name_only'] else ': ' + value}")
+                    print(f"{key}{'' if args.name_only else ': ' + value}")
         except Exception as e:
             print(f"Error: {e}")
         return
-    elif args['config_command'] == "get":
+    elif args.config_command == "get":
         # Handle get command
         try:
-            value = Config.get_value(args['name'], args['scope'])
+            value = Config.get_value(args.name, args.scope)
             if value is not None:
-                print(f"{args['name']}{'' if args['name_only'] else ': ' + value}")
+                print(f"{args.name}{'' if args.name_only else ': ' + value}")
             else:
-                print(f"Key '{args['name']}' not found in {args['scope']} configuration.")
+                print(f"Key '{args.name}' not found in {args.scope} configuration.")
         except Exception as e:
             print(f"Error: {e}")
         return
-    elif args['config_command'] == "set":
+    elif args.config_command == "set":
         # Handle set command
         try:
-            Config.set_value(args['name'], args['value'], args['scope'])
-            print(f"Set {args['name']} to {args['value']} in {args['scope']} configuration.")
+            Config.set_value(args.name, args.value, args.scope)
+            print(f"Set {args.name} to {args.value} in {args.scope} configuration.")
         except Exception as e:
             print(f"Error: {e}")
         return
-    elif args['config_command'] == "unset":
+    elif args.config_command == "unset":
         # Handle unset command
         try:
-            if Config.unset_value(args['name'], args['scope']):
-                print(f"Unset {args['name']} from {args['scope']} configuration.")
+            if Config.unset_value(args.name, args.scope):
+                print(f"Unset {args.name} from {args.scope} configuration.")
             else:
-                print(f"Key '{args['name']}' not found in {args['scope']} configuration.")
+                print(f"Key '{args.name}' not found in {args.scope} configuration.")
         except Exception as e:
             print(f"Error: {e}")
 
@@ -84,9 +84,9 @@ def init_command(args):
     """Inspired by npm init"""
 
     # Check if user requested the TUI interface
-    if args['fallback_tui']:
+    if args.fallback_tui:
         # Run the TUI to select course and assignment
-        course_id, assignment_id, course_name, assignment_name = run_tui(args['fallback_tui'])
+        course_id, assignment_id, course_name, assignment_name = run_tui(args.fallback_tui)
         
         # Check if course_id and assignment_id are provided
         # If not, exit the function
@@ -94,10 +94,10 @@ def init_command(args):
             return
         
         # Update args with values from TUI
-        args['course_id'] = course_id
-        args['assignment_id'] = assignment_id
-        args['course_name'] = course_name
-        args['assignment_name'] = assignment_name
+        args.course_id = course_id
+        args.assignment_id = assignment_id
+        args.course_name = course_name
+        args.assignment_name = assignment_name
         
         print(f"Selected: {course_name} (ID: {course_id})")
         print(f"Assignment: {assignment_name} (ID: {assignment_id})")
@@ -143,11 +143,11 @@ Press ^C at any time to quit."""
     
     try:
         # Get values from the user
-        prompt_for_value_and_set("assignment name: ", "assignment_name", old_config, config, args['assignment_name'])
-        prompt_for_value_and_set("course name: ", "course_name", old_config, config, args['course_name'])
-        prompt_for_value_and_set("assignment id: ", "assignment_id", old_config, config, args['assignment_id'])
-        prompt_for_value_and_set("course id: ", "course_id", old_config, config, args['course_id'])
-        prompt_for_value_and_set("default submission file: ", "default_upload", old_config, config, args['default_file'])
+        prompt_for_value_and_set("assignment name: ", "assignment_name", old_config, config, args.assignment_name)
+        prompt_for_value_and_set("course name: ", "course_name", old_config, config, args.course_name)
+        prompt_for_value_and_set("assignment id: ", "assignment_id", old_config, config, args.assignment_id)
+        prompt_for_value_and_set("course id: ", "course_id", old_config, config, args.course_id)
+        prompt_for_value_and_set("default submission file: ", "default_upload", old_config, config, args.default_file)
 
         # Get the current working directory from the command line
         config_dir = Path.cwd()
@@ -178,9 +178,9 @@ Press ^C at any time to quit."""
 def push_command(args):
     """Handle the push command to submit assignments"""
     # If course_id and assignment_id are not provided, try to load from local config
-    course_id = args['course_id']
-    assignment_id = args['assignment_id']
-    file_path = args['file']
+    course_id = args.course_id
+    assignment_id = args.assignment_id
+    file_path = args.file
     
     # Check if course_id and assignment_id are provided
     if not course_id or not assignment_id:
@@ -253,21 +253,21 @@ def pull_command(args):
         return
     
     # Determine if we should use TUI to select course/assignment
-    if args['tui']:
+    if args.tui:
         # Run the TUI to select course and assignment
-        course_id, assignment_id, course_name, assignment_name = run_tui(fallback=args['fallback_tui'])
+        course_id, assignment_id, course_name, assignment_name = run_tui(fallback=args.fallback_tui)
         
         if not course_id or not assignment_id:
             print("Pull operation cancelled.")
             return
         
         # Update args with values from TUI
-        args['course_id'] = course_id
-        args['assignment_id'] = assignment_id
+        args.course_id = course_id
+        args.assignment_id = assignment_id
     
     # Get course_id and assignment_id from args or config
-    course_id = args['course_id']
-    assignment_id = args['assignment_id']
+    course_id = args.course_id
+    assignment_id = args.assignment_id
     
     # If not provided, try to get from local config
     if not course_id or not assignment_id:
@@ -309,16 +309,16 @@ def pull_command(args):
     course_name = course_details.get('name', 'Unknown Course')
     
     # Format the output file
-    output_filename = args['output_file']
+    output_filename = args.output_file
     
     # Check if the file already exists
-    if Path(output_filename).exists() and not args['force_overwrite']:
+    if Path(output_filename).exists() and not args.force_overwrite:
         overwrite = input(f"File '{output_filename}' already exists. Overwrite? (y/N): ").lower() == 'y'
         if not overwrite:
             print("Pull operation cancelled.")
             return
         
-    output_directory = Path(args['output_dir']).absolute()
+    output_directory = Path(args.output_dir).absolute()
     downloaded_files = []
 
     # Create the markdown content
@@ -335,7 +335,7 @@ def pull_command(args):
     content += "## Description\n\n"
 
     # If --pdf is passed, find PDF links and download them
-    if args['download_pdfs']:
+    if args.download_pdfs:
         try:
             import re
             import requests
@@ -393,7 +393,7 @@ def pull_command(args):
             print(f"Error: {e}")
 
     # If --convert is passed, convert the pdfs to markdown
-    if args['convert_to_md']:
+    if args.convert_to_md:
         try:
             from markitdown import MarkItDown
             md = MarkItDown(enable_plugins=True) # Set to True to enable plugins
@@ -409,7 +409,7 @@ def pull_command(args):
                 markdown_pdfs.append(result.text_content)
 
             # If --delete is passed, delete the PDFs after conversion
-            if args['delete_temp']:
+            if args.delete_temp:
                 # Delete the downloaded PDFs after conversion
                 for pdf in downloaded_files:
                     try:
@@ -430,7 +430,7 @@ def pull_command(args):
         except Exception as e:
             print(f"Error: {e}")
 
-    if args['integrate_into_readme']:
+    if args.integrate_into_readme:
         for text in markdown_pdfs:
             description += text + "\n\n"
     else:
@@ -445,7 +445,7 @@ def pull_command(args):
             print(f"Error saving markdown file: {e}")
 
     # If --pages is passed, find Canvas page links and download them
-    if args['download_pages']:
+    if args.download_pages:
         try:
             import re
             import requests
@@ -506,7 +506,7 @@ def pull_command(args):
                             filename = filename.replace(' ', '_')
                             
                             # Save content based on conversion preference
-                            if args['convert_to_md']:
+                            if args.convert_to_md:
                                 try:
                                     # Convert HTML to Markdown
                                     from markdownify import markdownify as md
@@ -515,7 +515,7 @@ def pull_command(args):
                                     # Add file extension
                                     file_path = os.path.join(output_directory, filename + ".md")
                                     
-                                    if args['integrate_into_readme']:
+                                    if args.integrate_into_readme:
                                         # Store for later integration into main document
                                         markdown_pages.append({
                                             'title': page_title,
@@ -550,7 +550,7 @@ def pull_command(args):
                         print(f"Failed to fetch page {title}: {e}")
                 
                 # If integrated option is enabled, add all page contents to the description
-                if args['integrate_into_readme'] and markdown_pages:
+                if args.integrate_into_readme and markdown_pages:
                     for page in markdown_pages:
                         description += f"\n\n## {page['title']}\n\n"
                         description += page['content']
@@ -563,7 +563,7 @@ def pull_command(args):
             print(f"Error processing Canvas pages: {e}")
             
     # If --delete is passed and we've downloaded files, handle cleanup
-    if args['delete_temp'] and downloaded_files:
+    if args.delete_temp and downloaded_files:
         try:
             # Delete the downloaded files after processing
             for file_path in downloaded_files:
@@ -585,7 +585,7 @@ def pull_command(args):
             print(f"Error during cleanup: {e}")
 
     # If not requested as HTML, convert to Markdown
-    if not args['keep_html']:
+    if not args.keep_html:
         try:
             # Convert HTML to Markdown
             from markdownify import markdownify as md
@@ -615,26 +615,26 @@ def status_command(args):
         return
 
     # Check if global view is requested
-    if args['global_view']:
+    if args.global_view:
         show_global_status(api, args)
         return
 
     # Determine if we should use TUI to select course/assignment
-    if args['tui']:
+    if args.tui:
         # Run the TUI to select course and assignment
-        course_id, assignment_id, course_name, assignment_name = run_tui(fallback=args['fallback_tui'])
+        course_id, assignment_id, course_name, assignment_name = run_tui(fallback=args.fallback_tui)
         
         if not course_id or not assignment_id:
             print("Status check cancelled.")
             return
         
         # Update args with values from TUI
-        args['course_id'] = course_id
-        args['assignment_id'] = assignment_id
+        args.course_id = course_id
+        args.assignment_id = assignment_id
     
     # Get course_id and assignment_id from args or config
-    course_id = args['course_id']
-    assignment_id = args['assignment_id']
+    course_id = args.course_id
+    assignment_id = args.assignment_id
     
     # If not provided, try to get from local config
     if not course_id or not assignment_id:
@@ -655,11 +655,11 @@ def status_command(args):
 
 def help_command(args):
     """Handle the help command to show help information"""
-    if args['help_command']:
+    if args.help_command:
         # Show help for a specific command
-        print(f"Help for command '{args['help_command']}':")
+        print(f"Help for command '{args.help_command}':")
         # Use pydoc to show help
-        # pydoc.pager(pydoc.render_doc(args['help_command']))
+        # pydoc.pager(pydoc.render_doc(args.help_command))
     else:
         print("Available commands:")
         print("  config  - Configure Canvas API settings")

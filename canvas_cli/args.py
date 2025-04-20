@@ -398,6 +398,12 @@ def setup_status_parser(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Show messages alongside global status view."
     )
+    global_parser.add_argument(
+        "-j", "--json",
+        dest="output_json",
+        action="store_true",
+        help="Display the result in JSON format."
+    )
 
 
 def parse_args_and_dispatch(command_handlers: Dict[str, Callable]) -> None:
