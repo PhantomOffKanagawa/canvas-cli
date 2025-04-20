@@ -29,7 +29,7 @@ def show_global_status(api, args):
         print("No active courses found.")
         return
 
-    if args.json:
+    if args['json']:
         print(json.dumps(courses, indent=2))
         return
 
@@ -47,7 +47,7 @@ def show_global_status(api, args):
         "grade": len('100.0% (A+)') + 2,  # Max Size Message ' 100.0% (A+) '
     }
 
-    if term_width < 120 or not args.messages:
+    if term_width < 120 or not args['messages']:
         # No room for messages
         sizes['messages'] = 0
         sizes['course'] = term_width // 3 - 3  # 3 columns
@@ -157,11 +157,11 @@ def show_local_status(args: dict, api, course_id, assignment_id) -> None:
         print("Course not found.")
         return
 
-    if not assignment_id or args.course_details:
+    if not assignment_id or args['course_details']:
         print(f"=== Course Status ===")
         print(f"Course: {course.get('name')} ({course.get('course_code')})")
         print(f"ID: {course.get('id')}")
-        if args.json:
+        if args['json']:
             print("\nJSON Output:")
             print(json.dumps(course, indent=2))
 
@@ -188,10 +188,10 @@ def show_local_status(args: dict, api, course_id, assignment_id) -> None:
         print(f"Unlocks: {format_date(assignment.get('unlock_at'))}")
     print(f"Points Possible: {assignment.get('points_possible')}")
 
-    if args.grades or args.comments or args.all:
+    if args['grades'] or args['comments'] or args['all']:
         print("\nSubmission and grading details will be implemented later.")
 
-    if args.json:
+    if args['json']:
         output = {
             "course": course,
             "assignment": assignment

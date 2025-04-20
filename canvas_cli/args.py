@@ -128,23 +128,121 @@ def setup_push_parser(subparsers: argparse.ArgumentParser) -> None:
     push_parser.add_argument("-aid", "--assignment_id", metavar="id", type=int, help="Assignment ID")
     push_parser.add_argument("-f", "--file", metavar="file", type=str, help="Path to the file to submit (optional if set during init)")
 
-def setup_pull_parser(subparsers: argparse.ArgumentParser) -> None:
-    """Set up the pull command parser"""
-    pull_parser = subparsers.add_parser("pull", help="Download assignment description as README.md")
-    pull_parser.add_argument("-cid", "--course_id", metavar="id", type=int, help="Course ID")
-    pull_parser.add_argument("-aid", "--assignment_id", metavar="id", type=int, help="Assignment ID")
-    pull_parser.add_argument("-o", "--output", metavar="file", type=str, default="README.md", help="Output file name (default: README.md)")
-    pull_parser.add_argument("-f", "--force", action="store_true", help="Overwrite existing file if it exists")
-    pull_parser.add_argument("-html", action="store_true", help="Keeps description as HTML")
-    pull_parser.add_argument("-pdf", action="store_true", help="Crawl description and download PDFs")
-    pull_parser.add_argument("--pages", action="store_true", help="Crawl description and download pages")
-    pull_parser.add_argument("-in", "--integrated", action="store_true", help="NI - Integrate Crawled Material into README.md")
-    pull_parser.add_argument("-cnv", "--convert", action="store_true", help="NI - Convert all Crawled Material into Markdown")
-    pull_parser.add_argument("-de", "--delete_after", action="store_true", help="Delete unconverted crawl after processing")
-    pull_parser.add_argument("-od", "--output_directory", metavar="directory", type=str, default="./canvas-page", help="Where to place all crawled materials (README.md will be placed according to --output)")
-    pull_parser.add_argument("-t", "--tui", action="store_true", help="Use the TUI to select course and assignment")
-    pull_parser.add_argument("--fallback", help="Use fallback tui", action="store_true")
-    # TODO: THIS IS A MESS, CLEARLY NEEDS REFACTORING
+def setup_pull_parser(subparsers: argparse._SubParsersAction) -> None:
+    """Set up the pull command parser with detailed and structured arguments."""
+
+    pull_parser = subparsers.add_parser(
+        "pull",
+        help="Download assignment description and optionally crawl related files."
+    )
+
+    # ───────────────────────────── Assignment Identification ─────────────────────────────
+    core_group = pull_parser.add_argument_group("Assignment Identification")
+    core_group.add_argument(
+        "-cid", "--course_id",
+        dest="course_id",
+        metavar="COURSE_ID",
+        type=int,
+        help="Canvas Course ID (integer)."
+    )
+    core_group.add_argument(
+        "-aid", "--assignment_id",
+        dest="assignment_id",
+        metavar="ASSIGNMENT_ID",
+        type=int,
+        help="Canvas Assignment ID (integer)."
+    )
+    core_group.add_argument(
+        "-t", "--tui",
+        dest="tui",
+        action="store_true",
+        help="Use interactive Text-based User Interface to select course/assignment."
+    )
+    core_group.add_argument(
+        "--fallback",
+        dest="fallback_tui",
+        action="store_true",
+        help="Fallback to simplified TUI if main TUI fails."
+    )
+
+    # ───────────────────────────── Output Configuration ─────────────────────────────
+    output_group = pull_parser.add_argument_group("Output Configuration")
+    output_group.add_argument(
+        "-o", "--output",
+        dest="output_file",
+        metavar="FILE",
+        type=str,
+        default="README.md",
+        help="Filename for assignment description output (default: README.md)."
+    )
+    output_group.add_argument(
+        "-od", "--output-directory",
+        dest="output_dir",
+        metavar="DIRECTORY",
+        type=str,
+        default="./canvas-page",
+        help="Directory for saving crawled content (default: ./canvas-page)."
+    )
+    output_group.add_argument(
+        "-f", "--force",
+        dest="force_overwrite",
+        action="store_true",
+        help="Overwrite the output file if it already exists."
+    )
+
+    # ───────────────────────────── Description Formatting ─────────────────────────────
+    format_group = pull_parser.add_argument_group("Formatting Options")
+    format_group.add_argument(
+        "-html",
+        dest="keep_html",
+        action="store_true",
+        help="Preserve the assignment description as HTML instead of converting to Markdown."
+    )
+    format_group.add_argument(
+        "-cnv", "--convert",
+        dest="convert_to_md",
+        action="store_true",
+        help="Convert all crawled material into Markdown format."
+    )
+    format_group.add_argument(
+        "-in", "--integrated",
+        dest="integrate_into_readme",
+        action="store_true",
+        help="Integrate crawled material directly into the README.md output."
+    )
+    format_group.add_argument(
+        "-de", "--delete_after",
+        dest="delete_temp",
+        action="store_true",
+        help="Delete temporary crawl files after processing."
+    )
+
+    # ───────────────────────────── Download Behavior ─────────────────────────────
+    download_group = pull_parser.add_argument_group("Download Options")
+    download_group.add_argument(
+        "-pdf",
+        dest="download_pdfs",
+        action="store_true",
+        help="Download all PDF links found in the assignment description."
+    )
+    download_group.add_argument(
+        "--pages",
+        dest="download_pages",
+        action="store_true",
+        help="Download linked Canvas pages referenced in the description."
+    )
+    download_group.add_argument(
+        "-dla", "--download_all",
+        dest="download_all_files",
+        action="store_true",
+        help="NI - Download all assignment-related files into the specified output directory."
+    )
+    download_group.add_argument(
+        "-cdl", "--convert_links",
+        dest="convert_download_links",
+        action="store_true",
+        help="NI - Convert Canvas file links into direct download links."
+    )
 
 def setup_status_parser(subparsers: argparse.ArgumentParser) -> None:
     """Set up the status command parser"""

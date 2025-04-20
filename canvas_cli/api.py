@@ -303,6 +303,51 @@ class CanvasAPI:
         submit_res.raise_for_status()
         print("Assignment submitted successfully.")
 
+    def get_canvas_page(self, page_url):
+        """Fetch a Canvas page content by URL
+        
+        Args:
+            page_url: URL of the Canvas page to fetch
+            
+        Returns:
+            Page content as a dictionary with 'body' and 'title' keys or None on error
+        """
+        try:
+            import requests
+            
+            # Extract the API endpoint from the page URL
+            # URL looks like: https://umsystem.instructure.com/courses/296958/pages/m13-assignment-tasks
+            # API looks like: https://umsystem.instructure.com/api/v1/courses/296958/pages/m13-assignment-tasks
+            
+            # Check if API endpoint is already in the URL
+            if "api/v1" not in page_url:
+                # Split the URL to extract the host and path
+                parts = page_url.split("//")
+                if len(parts) < 2:
+                    return None
+                    
+                host_and_path = parts[1].split("/", 1)
+                if len(host_and_path) < 2:
+                    return None
+                
+                host = host_and_path[0]
+                path = host_and_path[1]
+                
+                # Construct API URL
+                api_url = f"https://{host}/api/v1/{path}"
+            else:
+                api_url = page_url
+            
+            # Make API request
+            response = requests.get(api_url, headers=self.headers)
+            response.raise_for_status()
+            
+            # Return page content
+            return response.json()
+        except Exception as e:
+            print(f"Error fetching Canvas page: {e}")
+            return None
+
 # Helper functions for formatting API data
 def format_date(date_str):
     """Format a date string nicely
