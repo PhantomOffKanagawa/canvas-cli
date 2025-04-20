@@ -31,7 +31,10 @@ class Config:
             raise ValueError("Key and value must be provided")
 
         if scope == "global":
-            config = Config.load_global()
+            try:
+                config = Config.load_global()
+            except FileNotFoundError as e:
+                config = {}
             config[key] = value
             Config.save_global(config)
         elif scope == "local":
