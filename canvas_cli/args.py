@@ -244,21 +244,97 @@ def setup_pull_parser(subparsers: argparse._SubParsersAction) -> None:
         help="NI - Convert Canvas file links into direct download links."
     )
 
-def setup_status_parser(subparsers: argparse.ArgumentParser) -> None:
-    """Set up the status command parser"""
-    status_parser = subparsers.add_parser("status", help="Get status about an assignment or class")
-    status_parser.add_argument("-cid", "--course_id", metavar="id", type=int, help="Course ID")
-    status_parser.add_argument("-aid", "--assignment_id", metavar="id", type=int, help="Assignment ID")
-    status_parser.add_argument("-cd", "--course_details", action="store_true", help="Show course details")
-    status_parser.add_argument("-a", "--all", action="store_true", help="Show all details including class information")
-    status_parser.add_argument("-c", "--comments", action="store_true", help="NI - Show assignment comments")
-    status_parser.add_argument("-g", "--grades", action="store_true", help="NI - Show assignment grades")
-    status_parser.add_argument("-j", "--json", action="store_true", help="Output in JSON format")
-    status_parser.add_argument("-t", "--tui", action="store_true", help="Use the TUI to select course and assignment")
-    status_parser.add_argument("--fallback", help="Use fallback tui", action="store_true")
-    subparser = status_parser.add_subparsers(dest="global_view", help="Show grades from all classes")
-    global_parser = subparser.add_parser("all", help="Show grades from all classes")
-    global_parser.add_argument("-m", "--messages", dest="messages", action="store_true", help="Show messages for global view")
+def setup_status_parser(subparsers: argparse._SubParsersAction) -> None:
+    """Configure the `status` command for viewing assignment or course status."""
+
+    status = subparsers.add_parser(
+        "status",
+        help="Get status details about an assignment, course, or all classes."
+    )
+
+    # ───────────────────── Identification Options ─────────────────────
+    identify = status.add_argument_group("Assignment Identification")
+    identify.add_argument(
+        "-cid", "--course_id",
+        dest="course_id",
+        metavar="COURSE_ID",
+        type=int,
+        help="Canvas Course ID (integer)."
+    )
+    identify.add_argument(
+        "-aid", "--assignment_id",
+        dest="assignment_id",
+        metavar="ASSIGNMENT_ID",
+        type=int,
+        help="Canvas Assignment ID (integer)."
+    )
+    identify.add_argument(
+        "-t", "--tui",
+        dest="tui",
+        action="store_true",
+        help="Use interactive Text-based User Interface to select course/assignment."
+    )
+    identify.add_argument(
+        "--fallback",
+        dest="fallback_tui",
+        action="store_true",
+        help="Fallback to simplified TUI if main TUI fails."
+    )
+
+    # ───────────────────── Detail Options ─────────────────────
+    details = status.add_argument_group("Information Detail")
+    details.add_argument(
+        "-cd", "--course-details",
+        dest="show_course_details",
+        action="store_true",
+        help="Show basic course metadata."
+    )
+    details.add_argument(
+        "-a", "--all",
+        dest="show_all_details",
+        action="store_true",
+        help="Show all details including class-level metadata."
+    )
+    details.add_argument(
+        "-c", "--comments",
+        dest="show_comments",
+        action="store_true",
+        help="(Not Implemented) Show comments on the assignment."
+    )
+    details.add_argument(
+        "-g", "--grades",
+        dest="show_grades",
+        action="store_true",
+        help="(Not Implemented) Show grades for the assignment."
+    )
+
+    # ───────────────────── Output Options ─────────────────────
+    output = status.add_argument_group("Output Formatting")
+    output.add_argument(
+        "-j", "--json",
+        dest="output_json",
+        action="store_true",
+        help="Display the result in JSON format."
+    )
+
+    # ───────────────────── Global View Subcommand ─────────────────────
+    global_view_subparsers = status.add_subparsers(
+        dest="global_view",
+        metavar="VIEW",
+        help="Optional subcommand to show status across all classes."
+    )
+
+    global_parser = global_view_subparsers.add_parser(
+        "all",
+        help="Show summary from all enrolled courses."
+    )
+    global_parser.add_argument(
+        "-m", "--messages",
+        dest="show_messages",
+        action="store_true",
+        help="Show messages alongside global status view."
+    )
+
 
 def parse_args_and_dispatch(command_handlers: Dict[str, Callable]) -> None:
     """

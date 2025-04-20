@@ -622,7 +622,7 @@ def status_command(args):
     # Determine if we should use TUI to select course/assignment
     if args['tui']:
         # Run the TUI to select course and assignment
-        course_id, assignment_id, course_name, assignment_name = run_tui(fallback=args['fallback'])
+        course_id, assignment_id, course_name, assignment_name = run_tui(fallback=args['fallback_tui'])
         
         if not course_id or not assignment_id:
             print("Status check cancelled.")
