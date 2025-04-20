@@ -69,6 +69,9 @@ canvas push -cid COURSE_ID -aid ASSIGNMENT_ID -f path/to/submission.py
 # In an initialized project directory:
 canvas push                     # Uses saved course ID, assignment ID, and file
 canvas push -f different.py     # Override the default file
+
+# Get info on the course and assignment
+canvas status --course_details
 ```
 
 ### ⚙️ View Configuration
@@ -124,11 +127,18 @@ Future improvements and features planned for Canvas CLI:
 - 🔄 Consider git remote paradigm over npm package.json for `canvas init`
 - ⬇️ Add `canvas pull` to download current submissions and assignment descriptions
 - ⚙️ Implement cascading config scope like git
-- 🔍 Build a TUI for getting course ID and assignment ID from name
+- 🔍 ~~Build a TUI for getting course ID and assignment ID from name~~
 - 📊 Add ability to retrieve versioning of submissions
-- 📅 Implement `git status`-like command to get due dates, grading status, and comments
+- 📅 ~~Implement `git status`-like command to get due dates, grading status, and comments~~
+    - 🎓 Get grades via submissions
 - 💬 Add commands for commenting on submissions
 - 🎨 Improve CLI interface and error handling
+- 📜 Add more detailed documentation and examples
+- 🎬 Add a github actions integration to automatically submit on push to main
+- 📦 Package the tool for easy installation via pip or conda
+- 🤐 Add support for zipping up multiple folders for submission
+- 📦 Add support for submitting multiple files at once
+- 📃 Add support for pagination
 
 ## 🤝 Contributing
 

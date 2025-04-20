@@ -20,13 +20,15 @@ def create_parser() -> argparse.ArgumentParser:
     
     # Init command
     setup_init_parser(subparsers)
-    
-    # Push command
+      # Push command
     setup_push_parser(subparsers)
+    
+    # Status command
+    setup_status_parser(subparsers)
 
     return parser
 
-def setup_config_parser(subparsers) -> None:
+def setup_config_parser(subparsers: argparse.ArgumentParser) -> None:
     """Set up the config command parser"""
     # Config command parser (matches git config style)
     config_parser = subparsers.add_parser("config", help="Configure Canvas API settings")
@@ -105,21 +107,39 @@ def setup_config_parser(subparsers) -> None:
     # config_parser.add_argument('name', nargs='?', help="Setting key")
     # config_parser.add_argument('value', nargs='?', help="Value to set for the key")
 
-def setup_init_parser(subparsers) -> None:
+def setup_init_parser(subparsers: argparse.ArgumentParser) -> None:
     """Set up the init command parser"""
     init_parser = subparsers.add_parser("init", help="Initialize a Canvas project in the current directory")
-    init_parser.add_argument("-cid", "--course_id", help="NI - Course ID")
-    init_parser.add_argument("-aid", "--assignment_id", help="NI - Assignment ID")
-    init_parser.add_argument("-cn", "--course_name", help="NI - Course name")
-    init_parser.add_argument("-an", "--assignment_name", help="NI - Assignment name")
-    init_parser.add_argument("-f", "--file", help="NI - Path to the default file to submit")
+    init_parser.add_argument("-cid", "--course_id", help="Course ID")
+    init_parser.add_argument("-aid", "--assignment_id", help="Assignment ID")
+    init_parser.add_argument("-cn", "--course_name", help="Course name")
+    init_parser.add_argument("-an", "--assignment_name", help="Assignment name")
+    init_parser.add_argument("-f", "--file", help="Path to the default file to submit")
+    init_parser.add_argument("-t", "--tui", help="Select values from a User Interface", action="store_true")
+    init_parser.add_argument("--fallback", help="Use fallback tui", action="store_true")
 
-def setup_push_parser(subparsers) -> None:
+def setup_push_parser(subparsers: argparse.ArgumentParser) -> None:
     """Set up the push command parser"""
     push_parser = subparsers.add_parser("push", help="Submit an assignment to Canvas")
     push_parser.add_argument("-cid", "--course_id", metavar="id", type=int, help="Course ID")
     push_parser.add_argument("-aid", "--assignment_id", metavar="id", type=int, help="Assignment ID")
     push_parser.add_argument("-f", "--file", metavar="file", type=str, help="Path to the file to submit (optional if set during init)")
+
+def setup_status_parser(subparsers: argparse.ArgumentParser) -> None:
+    """Set up the status command parser"""
+    status_parser = subparsers.add_parser("status", help="Get status about an assignment or class")
+    status_parser.add_argument("-cid", "--course_id", metavar="id", type=int, help="Course ID")
+    status_parser.add_argument("-aid", "--assignment_id", metavar="id", type=int, help="Assignment ID")
+    status_parser.add_argument("-cd", "--course_details", action="store_true", help="Show course details")
+    status_parser.add_argument("-a", "--all", action="store_true", help="Show all details including class information")
+    status_parser.add_argument("-c", "--comments", action="store_true", help="NI - Show assignment comments")
+    status_parser.add_argument("-g", "--grades", action="store_true", help="NI - Show assignment grades")
+    status_parser.add_argument("-j", "--json", action="store_true", help="Output in JSON format")
+    status_parser.add_argument("-t", "--tui", action="store_true", help="Use the TUI to select course and assignment")
+    status_parser.add_argument("--fallback", help="Use fallback tui", action="store_true")
+    subparser = status_parser.add_subparsers(dest="global_view", help="Show grades from all classes")
+    global_parser = subparser.add_parser("all", help="Show grades from all classes")
+    global_parser.add_argument("-m", "--messages", dest="messages", action="store_true", help="Show messages for global view")
 
 def parse_args_and_dispatch(command_handlers: Dict[str, Callable]) -> None:
     """
