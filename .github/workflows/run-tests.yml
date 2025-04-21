@@ -2,9 +2,9 @@ name: Run Tests
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, dev, testing ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, dev ]
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # python-version: ['3.8', '3.9', '3.10']
-        python-version: ['3.10']
+        python-version: ['3.8', '3.9', '3.10']
+        # python-version: ['3.10']
 
     steps:
     - uses: actions/checkout@v4
