@@ -9,7 +9,7 @@ with open("README.md", encoding="utf-8") as f:
 version = os.environ.get("RELEASE_VERSION", "0.1.0")
 
 setup(
-    name="canvas-cli",
+    name="canvas-cmd",  # Short, descriptive, and likely available
     version=version,
     packages=find_packages(),
     install_requires=[
