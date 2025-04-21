@@ -9,13 +9,27 @@ with open("README.md", encoding="utf-8") as f:
 version = os.environ.get("RELEASE_VERSION", "0.1.0")
 
 setup(
-    name="canvas-cmd",  # Short, descriptive, and likely available
+    name="canvas-cmd",  # Short, descriptive, and available
     version=version,
     packages=find_packages(),
     install_requires=[
         "requests>=2.25.0",
-        "markdownify>=0.11.0",
     ],
+    extras_require={
+        "gui": [
+            "rich",
+        ],
+        "convert": [
+            "markitdown[docx,pdf]>=0.1.0",
+        ],
+        "full": [
+            "rich",
+            "markitdown[docx,pdf]>=0.1.0",
+        ],
+        "windows": [
+            "windows-curses",
+        ]
+    },
     entry_points={
         "console_scripts": [
             "canvas=canvas_cli.cli:main",

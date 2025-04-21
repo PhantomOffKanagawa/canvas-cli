@@ -3,7 +3,6 @@ Terminal User Interface (TUI) for Canvas CLI
 Provides interactive TUI components for selecting courses and assignments
 """
 
-import requests
 from typing import List, Dict, Optional, Tuple, Callable
 from .tui_utils import FuzzySearch, Formatter
 from .api import CanvasAPI
@@ -14,9 +13,9 @@ try:
     CURSES_AVAILABLE = True
 except ImportError:
     CURSES_AVAILABLE = False
-    print("Warning: Curses module not available. Using fallback text interface.")
-    print("For Windows users: Install the 'windows-curses' package with:")
-    print("pip install windows-curses")
+    import importlib.metadata
+    command_name = importlib.metadata.name("canvas-cmd")
+    print(f"Curses module not available. Using fallback text ui.\nIf on Windows run `pip install {command_name}[windows]` to download windows-curses for tui support.")
 
 # Curses-based TUI implementation
 if CURSES_AVAILABLE:      

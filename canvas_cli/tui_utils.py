@@ -8,6 +8,9 @@ from datetime import datetime
 try:
     import curses
 except ImportError:
+    import importlib.metadata
+    command_name = importlib.metadata.name("canvas-cmd")
+    print(f"Curses module not available. This may be due to running in an environment that does not support curses.\nIf on Windows run `pip install {command_name}[windows]` to download windows-curses for tui support.")
     curses = None
 
 

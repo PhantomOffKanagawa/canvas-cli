@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import sys
 import os
-import pydoc
+import re
 
 from canvas_cli.cli_utils import get_needed_args, need_argument_output
 from .__version__ import __version__
@@ -351,7 +351,6 @@ def clone_command(args):
         def find_pages(content):
             """Find all canvas pages in the HTML content"""
             try:
-                import re
                 from .config import Config
                 canvas_url = Config.get_value("host", ["local", "global"])
                 if canvas_url is None:
@@ -379,8 +378,6 @@ def clone_command(args):
                             fetched.add(href)
                             html[title] = page_content
                             process_pages.append(page_content)
-            except ImportError:
-                print("Error: re module not found. Cannot find canvas pages.")
             except Exception as e:
                 print(f"Error: {e}")
                 
@@ -394,7 +391,6 @@ def clone_command(args):
     if convert_links:
         for title, content in html.items():
             try:
-                import re
                 from .config import Config
                 canvas_url = Config.get_value("host", ["local", "global"])
                 if canvas_url is None:
@@ -440,8 +436,8 @@ def clone_command(args):
                 
                 html[title] = content
                 
-            except ImportError:
-                print("Error: re module not found. Cannot find canvas links.")
+            except Exception as e:
+                print(f"Error: {e}")
                 return
             
         
@@ -450,7 +446,6 @@ def clone_command(args):
         # Find all Canvas PDF links in the HTML content
         pdf_links = {}
         try:
-            import re
             from .config import Config
             canvas_url = Config.get_value("host", ["local", "global"])
             if canvas_url is None:
@@ -474,9 +469,9 @@ def clone_command(args):
                         # Construct the full URL
                         download_url = f"{base_url}/download?download_frd=1&verifier={verifier}"
                         pdf_links[title] = download_url
-                
-        except ImportError:
-            print("Error: re module not found. Cannot find PDF links.")
+        except Exception as e:
+            print(f"Error: {e}")
+            return        
         
         try:
             if pdf_links:
@@ -523,9 +518,9 @@ def clone_command(args):
                         # Construct the full URL
                         download_url = f"{base_url}/download?download_frd=1&verifier={verifier}"
                         doc_links[title] = download_url
-                
-        except ImportError:
-            print("Error: re module not found. Cannot find docx links.")
+        except Exception as e:
+            print(f"Error: {e}")
+            return
         
         try:
             if doc_links:
@@ -568,7 +563,9 @@ def clone_command(args):
                         markdown[title] = text
                 
             except ImportError:
-                print("Error: markitdown module not found. Cannot convert to markdown.")
+                import importlib.metadata
+                command_name = importlib.metadata.name("canvas-cmd")
+                print(f"Error: markitdown module not found. Cannot convert to markdown.\n Run 'pip install {command_name}[convert]' to install the required dependencies for converting.")
                 return
             
         if pdfs and len(pdfs) != 0:
@@ -586,7 +583,9 @@ def clone_command(args):
                     text = "#" + pdf + "\n" + result.text_content
                     markdown[pdf] = text
             except ImportError:
-                print("Error: markitdown module not found. Cannot convert PDFs to markdown.")
+                import importlib.metadata
+                command_name = importlib.metadata.name("canvas-cmd")
+                print(f"Error: markitdown module not found. Cannot convert to markdown.\n Run 'pip install {command_name}[convert]' to install the required dependencies for converting.")
                 return
             
         if docs and len(docs) != 0:
@@ -604,7 +603,9 @@ def clone_command(args):
                     text = "#" + doc + "\n" + result.text_content
                     markdown[doc] = text
             except ImportError:
-                print("Error: markitdown module not found. Cannot convert PDFs to markdown.")
+                import importlib.metadata
+                command_name = importlib.metadata.name("canvas-cmd")
+                print(f"Error: markitdown module not found. Cannot convert to markdown.\n Run 'pip install {command_name}[convert]' to install the required dependencies for converting.")
                 return
             
     else:
@@ -675,7 +676,9 @@ def clone_command(args):
             console = Console()
             console.print(Markdown(readme))
         except ImportError:
-            print("Error: rich module not found. Cannot display markdown in terminal.")
+            import importlib.metadata
+            command_name = importlib.metadata.name("canvas-cmd")
+            print(f"Error: markitdown module not found. Cannot convert to markdown.\n Run 'pip install {command_name}[gui]' to install the required dependencies for converting.")
             return
 
 def push_command(args):
