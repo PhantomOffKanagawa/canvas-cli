@@ -262,72 +262,421 @@ def pull_command(args):
         return
     
     
-# def clone_command(args):
-#     """Handle the clone command to download assignments"""
-#     # Try to get the course_id and assignment_id from the config
-#     try:
-#         missing_args = get_needed_args(args, ["course_id", "assignment_id"], True)
-#     except Exception as e:
-#         print(f"Error: {e}")
-#         return
+def clone_command(args):
+    """Handle the clone command to download assignments"""
+    # Try to get the course_id and assignment_id from the config
+    try:
+        missing_args = get_needed_args(args, ["course_id", "assignment_id"], True)
+    except Exception as e:
+        print(f"Error: {e}")
+        return
     
-#     if missing_args:
-#         need_argument_output("clone", missing_args)
-#         return
+    if missing_args:
+        need_argument_output("clone", missing_args)
+        return
     
-#     # Determine Course and Assignment IDs
-#     course_id = args.course_id
-#     assignment_id = args.assignment_id
+    # Determine Course and Assignment IDs
+    course_id = args.course_id
+    assignment_id = args.assignment_id
     
-#     # Determine what we need to clone using download-group
-#     download_pdfs: bool = args.download_pdfs
-#     crawl_canvas_pages: bool = args.crawl_canvas_pages
-#     download_all_files: bool = args.download_all_files
-#     download_submissions: bool = args.download_submissions
-#     delete_after_download: bool = args.delete_after_download
+    # Determine what we need to clone using download-group
+    download_pdfs: bool = args.download_pdfs
+    download_docx: bool = args.download_docx
+    crawl_canvas_pages: bool = args.crawl_canvas_pages
+    # download_all_files: bool = args.download_all_files
+    # download_submissions: bool = args.download_submissions
+    delete_after_convert: bool = args.delete_after_convert
     
-#     # Determine formatting actions using format-group
-#     keep_html_file: bool = args.keep_html_file
-#     convert_to_markdown: bool = args.convert_to_markdown
-#     integrate_together: bool = args.integrate_together
-#     convert_links: bool = args.convert_links
+    # Determine formatting actions using format-group
+    # keep_html_file: bool = args.keep_html_file
+    convert_to_markdown: bool = args.convert_to_markdown
+    integrate_together: bool = args.integrate_together
+    convert_links: bool = args.convert_canvas_download_links
     
-#     # Determine output options using output-group
-#     output_file_destination: str = args.output_file_destination
-#     output_directory: str = args.output_directory
-#     output_to_stdout: bool = args.output_to_stdout
-#     display_in_terminal: bool = args.display_in_terminal
-#     overwrite: bool = args.overwrite_file
+    # Determine output options using output-group
+    output_file_destination: str = args.output_file_destination
+    output_directory: str = args.output_directory
+    # output_to_stdout: bool = args.output_to_stdout
+    display_in_terminal: bool = args.display_in_terminal
+    overwrite: bool = args.overwrite_file
     
-#     # Calculated attributes
-#     do_save_main_file: bool = output_file_destination is not None
-#     will_have_temp_files: bool = ((download_pdfs or crawl_canvas_pages) and convert_to_markdown)
-#     use_temp_dir: bool = delete_after_download and will_have_temp_files
-#     temp_dir: str = os.path.join(os.getcwd(), output_directory, ".canvas.temp")
+    # Calculated attributes
+    do_save_main_file: bool = output_file_destination is not None
+    will_have_temp_files: bool = ((download_pdfs or crawl_canvas_pages) and convert_to_markdown)
+    use_temp_dir: bool = delete_after_convert and will_have_temp_files
+    download_dir: str = os.path.join(os.getcwd(), output_directory, ".canvas.temp") if use_temp_dir else os.path.join(os.getcwd(), output_directory)
     
-#     # Initialize API client
-#     try:
-#         api = CanvasAPI()
-#     except ValueError as e:
-#         print(f"Error: {e}")
-#         return
+    try:
+        if will_have_temp_files:
+            # Create the download directory if it doesn't exist
+            os.makedirs(download_dir, exist_ok=True)
+    except Exception as e:
+        print(f"Error creating download directory: {e}")
+        return
+        
+    
+    # Initialize API client
+    try:
+        api = CanvasAPI()
+    except ValueError as e:
+        print(f"Error: {e}")
+        return
 
-#     # Get the assignment details
-#     try:
-#         assignment = api.get_assignment_details(course_id, assignment_id)
-#         if not assignment:
-#             print(f"Assignment with ID {assignment_id} not found in course {course_id}.")
-#             return
-#     except Exception as e:
-#         print(f"Error fetching assignment details: {e}")
-#         return
+    # Get the assignment details
+    try:
+        assignment = api.get_assignment_details(course_id, assignment_id)
+        if not assignment:
+            print(f"Assignment with ID {assignment_id} not found in course {course_id}.")
+            return
+    except Exception as e:
+        print(f"Error fetching assignment details: {e}")
+        return
+    
+    html: dict = {}
+    
+    description = assignment.get("description", None)
+    if description is None:
+        print(f"No description found for assignment {assignment_id} in course {course_id}.")
+        return
+    
+    html['description'] = description
+    
+    # Hold all fetched files to avoid duplicates
+    fetched = set()
+    
+    # If crawl pages is enabled, fetch all canvas pages in the description recursively
+    if crawl_canvas_pages:
+        process_pages = list(html.values())
+        # Find all canvas pages in the HTML content
+        def find_pages(content):
+            """Find all canvas pages in the HTML content"""
+            try:
+                import re
+                from .config import Config
+                canvas_url = Config.get_value("host", ["local", "global"])
+                if canvas_url is None:
+                    print("Error: canvas_url not set in configuration.")
+                    return
+                
+                # Regular expression to match Canvas page links
+                # <a title="M13 Assignment Tasks" href="https://umsystem.instructure.com/courses/296958/pages/m13-assignment-tasks" data-api-endpoint="https://umsystem.instructure.com/api/v1/courses/296958/pages/m13-assignment-tasks" data-api-returntype="Page">M13 Assignment Tasks</a>
+                page_links = re.findall(
+                    r'<a [^>]*href="(https?:\/\/' + canvas_url.replace(".", "\.") + r'\/courses\/\d+\/pages\/[^"]+)"[^>]*data-api-endpoint="([^"]+)"[^>]*data-api-returntype="Page"[^>]*>([^<]+)<\/a>',
+                    content,
+                    re.IGNORECASE,
+                )
+                
+                if page_links:
+                    for href, api_endpoint, title in page_links:
+                        if href in fetched:
+                            print(f"Already fetched page link: {href}")
+                            continue
+                        
+                        print(f"Found page link: {href}")
+                        response = api.get_canvas_page(api_endpoint)
+                        if response and 'body' in response:
+                            page_content = response['body']
+                            fetched.add(href)
+                            html[title] = page_content
+                            process_pages.append(page_content)
+            except ImportError:
+                print("Error: re module not found. Cannot find canvas pages.")
+            except Exception as e:
+                print(f"Error: {e}")
+                
+        while process_pages:
+            page = process_pages.pop(0)
+            find_pages(page)
+    
+    # Search for all Canvas links in the HTML content
+    # Replace download links with the actual download link
+    # Add warning for canvas pages that are not downloadable
+    if convert_links:
+        for title, content in html.items():
+            try:
+                import re
+                from .config import Config
+                canvas_url = Config.get_value("host", ["local", "global"])
+                if canvas_url is None:
+                    print("Error: canvas_url not set in configuration.")
+                    return
+                
+                # Regular expression to match Canvas page links
+                # <a title="M13 Assignment Tasks" href="https://umsystem.instructure.com/courses/296958/pages/m13-assignment-tasks" data-api-endpoint="https://umsystem.instructure.com/api/v1/courses/296958/pages/m13-assignment-tasks" data-api-returntype="Page">M13 Assignment Tasks</a>
+                # Replace the text of Canvas page links with "(Canvas Link)" appended
+                def add_canvas_link_label(match):
+                    return match.group(0).replace(match.group(2), f"{match.group(2)} (Canvas Link)")
 
-#     # Download the submission file
-#     try:
-#         file_path = api.download_submission_file(course_id, assignment["submission"]["id"])
-#         print(f"Downloaded submission file to {file_path}.")
-#     except Exception as e:
-#         print(f"Error downloading submission file: {e}")
+                content = re.sub(
+                    r'(<a [^>]*href="https?:\/\/' + canvas_url.replace(".", r"\.") + r'\/[^"]+"[^>]*data-api-endpoint="[^"]+"[^>]*data-api-returntype="Page"[^>]*>)([^<]+)(<\/a>)',
+                    add_canvas_link_label,
+                    content,
+                    flags=re.IGNORECASE,
+                )
+                
+                # Replace Canvas file links with a second copy of the link using the download URL
+                def add_download_link(match):
+                    href = match.group(1)
+                    title = match.group(2)
+                    # Match the expected Canvas file URL pattern
+                    file_match = re.match(
+                        r"(https:\/\/" + canvas_url.replace(".", r"\.") + r"\/courses\/\d+\/files\/\d+)\?verifier=([A-Za-z0-9]+)&amp;wrap=1",
+                        href,
+                    )
+                    if file_match:
+                        base_url, verifier = file_match.groups()
+                        download_url = f"{base_url}/download?download_frd=1&verifier={verifier}"
+                        # Return the original link plus a new download link
+                        return f'<a href="{href}">{title}</a> <a href="{download_url}">(Download)</a>'
+                    else:
+                        return match.group(0)
+
+                content = re.sub(
+                    r'<a[^>]+href="([^"]+)"[^>]*>([^<]+\.(?:pdf|docx?s?))</a>',
+                    add_download_link,
+                    content,
+                    flags=re.IGNORECASE,
+                )
+                
+                html[title] = content
+                
+            except ImportError:
+                print("Error: re module not found. Cannot find canvas links.")
+                return
+            
+        
+    pdfs = []
+    if download_pdfs:
+        # Find all Canvas PDF links in the HTML content
+        pdf_links = {}
+        try:
+            import re
+            from .config import Config
+            canvas_url = Config.get_value("host", ["local", "global"])
+            if canvas_url is None:
+                print("Error: canvas_url not set in configuration.")
+                return
+                
+            for page in html.values():
+                false_links = (re.findall(
+                    r'<a[^>]+href="([^"]+)"[^>]*>([^<]+\.pdf)</a>',
+                    page,
+                    re.IGNORECASE,
+                ))
+                for href, title in false_links:
+                    # Only match links with the expected pattern
+                    match = re.match(
+                        r"(https:\/\/" + canvas_url.replace(".", "\.") + r"\/courses\/\d+\/files\/\d+)\?verifier=([A-Za-z0-9]+)&amp;wrap=1",
+                        href,
+                    )
+                    if match:
+                        base_url, verifier = match.groups()
+                        # Construct the full URL
+                        download_url = f"{base_url}/download?download_frd=1&verifier={verifier}"
+                        pdf_links[title] = download_url
+                
+        except ImportError:
+            print("Error: re module not found. Cannot find PDF links.")
+        
+        try:
+            if pdf_links:
+                for title, href in pdf_links.items():
+                    if href in fetched:
+                        print(f"Already fetched PDF link: {href}")
+                        continue
+                    
+                    print(f"Found PDF link: {href}")
+                    filename = os.path.join(download_dir, title)
+                    response = download_file(href, filename, overwrite=overwrite)
+                    if response:
+                        fetched.add(href)
+                        pdfs.append(filename)
+        except Exception as e:
+            print(f"Error downloading PDF: {e}")
+            
+    docs = []
+    if download_docx:
+        # Find all Canvas DOCX links in the HTML content
+        doc_links = {}
+        try:
+            import re
+            from .config import Config
+            canvas_url = Config.get_value("host", ["local", "global"])
+            if canvas_url is None:
+                print("Error: canvas_url not set in configuration.")
+                return
+                
+            for page in html.values():
+                false_links = (re.findall(
+                    r'<a[^>]+href="([^"]+)"[^>]*>([^<]+\.docx?s?)</a>',
+                    page,
+                    re.IGNORECASE,
+                ))
+                for href, title in false_links:
+                    # Only match links with the expected pattern
+                    match = re.match(
+                        r"(https:\/\/" + canvas_url.replace(".", "\.") + r"\/courses\/\d+\/files\/\d+)\?verifier=([A-Za-z0-9]+)&amp;wrap=1",
+                        href,
+                    )
+                    if match:
+                        base_url, verifier = match.groups()
+                        # Construct the full URL
+                        download_url = f"{base_url}/download?download_frd=1&verifier={verifier}"
+                        doc_links[title] = download_url
+                
+        except ImportError:
+            print("Error: re module not found. Cannot find docx links.")
+        
+        try:
+            if doc_links:
+                for title, href in doc_links.items():
+                    if href in fetched:
+                        print(f"Already fetched DOCX link: {href}")
+                        continue
+                    
+                    print(f"Found DOCX link: {href}")
+                    filename = os.path.join(download_dir, title)
+                    response = download_file(href, filename, overwrite=overwrite)
+                    if response:
+                        fetched.add(href)
+                        docs.append(filename)
+        except Exception as e:
+            print(f"Error downloading DOCX: {e}")
+            
+    markdown = {}
+    readme = ""
+    if convert_to_markdown:
+        if html and len(html.values()) != 0:  # Fixed method call to values()
+            try:
+                from markitdown import MarkItDown
+                import io
+                md = MarkItDown(enable_plugins=True) # Set to True to enable plugins
+                for title, content in html.items():
+                    # Convert HTML string to Markdown
+                    if isinstance(content, str):
+                        content_stream = io.BytesIO(content.encode("utf-8"))
+                    else:
+                        content_stream = content
+                    result = md.convert_stream(content_stream)
+                    markdown_content = result.text_content
+                        
+                    if title == "description":
+                        text = markdown_content
+                        readme = text
+                    else:
+                        text = "#" + title + "\n" + markdown_content
+                        markdown[title] = text
+                
+            except ImportError:
+                print("Error: markitdown module not found. Cannot convert to markdown.")
+                return
+            
+        if pdfs and len(pdfs) != 0:
+            try:
+                from markitdown import MarkItDown
+                md = MarkItDown(enable_plugins=True) # Set to True to enable plugins
+                for pdf in pdfs:
+                    # Convert the PDF to Markdown
+                    pdf_path = Path(pdf)
+                    # Ensure its a pdf file
+                    if pdf_path.suffix.lower() != ".pdf":
+                        print(f"Skipping non-PDF file: {pdf_path}")
+                        continue
+                    result = md.convert(pdf_path)
+                    text = "#" + pdf + "\n" + result.text_content
+                    markdown[pdf] = text
+            except ImportError:
+                print("Error: markitdown module not found. Cannot convert PDFs to markdown.")
+                return
+            
+        if docs and len(docs) != 0:
+            try:
+                from markitdown import MarkItDown
+                md = MarkItDown(enable_plugins=True) # Set to True to enable plugins
+                for doc in docs:
+                    # Convert the DOCX to Markdown
+                    doc_path = Path(doc)
+                    # Ensure its a docx file
+                    if doc_path.suffix.lower() != ".docx":
+                        print(f"Skipping non-DOCX file: {doc_path}")
+                        continue
+                    result = md.convert(doc_path)
+                    text = "#" + doc + "\n" + result.text_content
+                    markdown[doc] = text
+            except ImportError:
+                print("Error: markitdown module not found. Cannot convert PDFs to markdown.")
+                return
+            
+    else:
+        # If not converting to markdown, just save the HTML content
+        readme = html.get("description", None)
+        if readme is None:
+            print(f"No description found for assignment {assignment_id} in course {course_id}.")
+            return
+            
+    if delete_after_convert:
+        # Delete the temporary files after download
+        try:
+            for file in os.listdir(download_dir):
+                file_path = os.path.join(download_dir, file)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+            os.rmdir(download_dir)
+            print(f"Deleted temporary files in {download_dir}.")
+        except Exception as e:
+            print(f"Error deleting temporary files: {e}")
+            return
+        
+    if integrate_together:
+        # Integrate all markdown files into one
+        for key, value in markdown.items():
+            if key == "description":
+                continue
+            readme = readme + "\n\n# " + key + "\n" + value
+        markdown = {}
+        
+    if do_save_main_file:
+        # Save the markdown to a file
+        try:
+            
+            if readme != "":
+                # Save the readme to a file
+                # Ensure the output file path is absolute
+                output_file_destination = Path(output_file_destination).resolve()
+                # Create the directory if it doesn't exist
+                os.makedirs(output_file_destination.parent, exist_ok=True)
+                # Save the readme to a file
+                with open(output_file_destination, "w", encoding="utf-8") as f:
+                    f.write(readme)
+                print(f"Saved markdown to {output_file_destination}.")
+                    
+            if markdown and len(markdown) != 0:
+                # Save the markdown to a file
+                # Ensure the output file path is absolute
+                output_file_destination = Path(output_directory).resolve()
+                # Create the directory if it doesn't exist
+                os.makedirs(output_file_destination, exist_ok=True)
+                # Save the markdown to a file
+                for name, text in markdown.items():
+                    # Create a new file for each markdown file
+                    output_file_destination = os.path.join(output_directory, f"assignment_{assignment_id}_{name}.md")
+                    with open(output_file_destination, "w", encoding="utf-8") as f:
+                        f.write(text)
+                print(f"Saved markdown to {output_directory}.")
+            
+        except Exception as e:
+            print(f"Error saving markdown: {e}")
+            return
+        
+    if display_in_terminal:
+        try:
+            from rich.console import Console
+            from rich.markdown import Markdown
+            console = Console()
+            console.print(Markdown(readme))
+        except ImportError:
+            print("Error: rich module not found. Cannot display markdown in terminal.")
+            return
 
 def push_command(args):
     """Handle the push command to submit assignments"""
@@ -426,6 +775,8 @@ def help_command(args):
         print("  config  - Configure Canvas API settings")
         print("  init    - Initialize a Canvas project")
         print("  push    - Submit an assignment to Canvas")
+        print("  pull    - Download assignment submissions from Canvas")
+        print("  clone   - Download assignment details from Canvas")
         print("  status  - Get status information about assignments and courses")
         print("  help    - Show help information")
 
@@ -436,6 +787,7 @@ def main():
         "config": config_command,
         "init": init_command,
         "pull": pull_command,
+        "clone": clone_command,
         "push": push_command,
         "status": status_command,
         "help": help_command

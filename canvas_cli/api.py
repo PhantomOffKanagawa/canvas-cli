@@ -31,6 +31,27 @@ class CanvasAPI:
         self.cache = {}  # Cache for storing API responses
         self.cache_expiry = 60 * 5  # Cache expiry time in seconds (5 minutes)
         self.cache_time = {}  # Cache time for each endpoint
+        
+    def get_canvas_page(self, url: str, params: dict = None) -> Optional[Dict]:
+        """Get a page from the Canvas API
+        
+        Args:
+            url: The URL to fetch
+            params: Additional parameters for the request
+        
+        Returns:
+            JSON response as a dictionary or None on error
+        """
+        if params is None:
+            params = {}
+        
+        try:
+            response = requests.get(url, headers=self.headers, params=params)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            print(f"Error fetching page: {e}")
+            return None
     
     def get_courses(self, params: dict = None) -> List[Dict]:
         """Get list of courses from Canvas API
@@ -358,3 +379,5 @@ def download_file(url: str, file_path: str, overwrite: bool = False) -> None:
     with open(file_path, 'wb') as f:
         for chunk in response.iter_content(chunk_size=8192):
             f.write(chunk)
+            
+    return response

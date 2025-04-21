@@ -32,6 +32,9 @@ def create_parser() -> argparse.ArgumentParser:
 
     # Pull command
     setup_pull_parser(subparsers)
+    
+    # Clone command
+    setup_clone_parser(subparsers)
 
     return parser
 
@@ -167,43 +170,44 @@ def setup_pull_parser(subparsers: argparse.ArgumentParser) -> None:
     download_group.add_argument("-dl", "--download-latest", dest="download_latest", action="store_true", help="Download the latest assignment submission")
     identify_group.add_argument("-dt", "--download-tui", dest="download_tui", action="store_true", help="Use interactive Text-based User Interface to select download.")
 
-# def setup_clone_parser(subparsers):
-#     clone_parser = subparsers.add_parser("clone", help="Download assignment details from Canvas")
+def setup_clone_parser(subparsers):
+    clone_parser = subparsers.add_parser("clone", help="Download assignment details from Canvas")
     
-#     identify_group = clone_parser.add_argument_group("Course and Assignment Identification")
-#     identify_group.add_argument( "-cid", "--course_id", dest="course_id", metavar="COURSE_ID", type=int, help="Canvas Course ID (integer)." )
-#     identify_group.add_argument( "-aid", "--assignment_id", dest="assignment_id", metavar="ASSIGNMENT_ID", type=int, help="Canvas Assignment ID (integer)." )
-#     identify_group.add_argument("-t", "--tui", dest="tui", action="store_true", help="Use interactive Text-based User Interface to select course/assignment.")
-#     identify_group.add_argument("--fallback", dest="fallback_tui", action="store_true", help="Fallback to a basic TUI if the full interface is unavailable.")
+    identify_group = clone_parser.add_argument_group("Course and Assignment Identification")
+    identify_group.add_argument( "-cid", "--course_id", dest="course_id", metavar="COURSE_ID", type=int, help="Canvas Course ID (integer)." )
+    identify_group.add_argument( "-aid", "--assignment_id", dest="assignment_id", metavar="ASSIGNMENT_ID", type=int, help="Canvas Assignment ID (integer)." )
+    identify_group.add_argument("-t", "--tui", dest="tui", action="store_true", help="Use interactive Text-based User Interface to select course/assignment.")
+    identify_group.add_argument("--fallback", dest="fallback_tui", action="store_true", help="Fallback to a basic TUI if the full interface is unavailable.")
 
-#     output_group = clone_parser.add_argument_group("Output Options")
-#     output_group.add_argument("-o", "--output", dest="output_file_destination", type=str, default="README.md", help="Filename for assignment output")
-#     output_group.add_argument("-od", "--output-dir", dest="output_directory", type=str, default="./canvas-page", help="Directory for crawled content")
+    output_group = clone_parser.add_argument_group("Output Options")
+    output_group.add_argument("-o", "--output", dest="output_file_destination", type=str, default="README.md", help="Filename for assignment output")
+    output_group.add_argument("-od", "--output-dir", dest="output_directory", type=str, default="./canvas-page", help="Directory for crawled content")
 #     output_group.add_argument("-os", "--stdout", dest="output_to_stdout", action="store_true", help="Output directly to terminal")
-#     output_group.add_argument("-ot", "--out-terminal", dest="display_in_terminal", action="store_true", help="Display output in terminal")
-#     output_group.add_argument("-f", "--force", dest="overwrite_file", action="store_true", help="Overwrite existing files")
+    output_group.add_argument("-ot", "--out-terminal", dest="display_in_terminal", action="store_true", help="Display output in terminal")
+    output_group.add_argument("-f", "--force", dest="overwrite_file", action="store_true", help="Overwrite existing files")
     
-#     # Enforce logic: if --stdout or --out-terminal is set, --output must be provided to be passed
-#     def _enforce_output_logic(args, parser=clone_parser):
-#         # If --stdout is set, default output_file_destination to None
-#         if getattr(args, "output_to_stdout", False) or getattr(args, "display_in_terminal", False):
-#             args.output_file_destination = None
-#         elif not getattr(args, "output_file_destination", None):
-#             args.output_file_destination = "README.md"
-#     clone_parser.set_defaults(func=_enforce_output_logic)
+    # Enforce logic: if --stdout or --out-terminal is set, --output must be provided to be passed
+    def _enforce_output_logic(args, parser=clone_parser):
+        # If --stdout is set, default output_file_destination to None
+        if getattr(args, "output_to_stdout", False) or getattr(args, "display_in_terminal", False):
+            args.output_file_destination = None
+        elif not getattr(args, "output_file_destination", None):
+            args.output_file_destination = "README.md"
+    clone_parser.set_defaults(func=_enforce_output_logic)
 
-#     format_group = clone_parser.add_argument_group("Formatting Options")
+    format_group = clone_parser.add_argument_group("Formatting Options")
 #     format_group.add_argument("-fht", "--html", dest="keep_html_file", action="store_true", help="NI - Preserve HTML format")
-#     format_group.add_argument("-fmd", "--convert", dest="convert_to_markdown", action="store_true", help="NI - Convert all crawled content to Markdown (by default only markdown)")
-#     format_group.add_argument("-fi", "--integrate", dest="integrate_together", action="store_true", help="NI - Integrate crawled content into README")
-#     format_group.add_argument("-fl", "--convert-links", dest="convert_canvas_download_links", action="store_true", help="NI - Convert Canvas links to direct download")
+    format_group.add_argument("-fmd", "--convert", dest="convert_to_markdown", action="store_true", help="NI - Convert all crawled content to Markdown (by default only markdown)")
+    format_group.add_argument("-fi", "--integrate", dest="integrate_together", action="store_true", help="NI - Integrate crawled content into README")
+    format_group.add_argument("-fl", "--convert-links", dest="convert_canvas_download_links", action="store_true", help="NI - Convert Canvas links to direct download")
 
-#     download_group = pull_parser.add_argument_group("Download Options")
-#     download_group.add_argument("-dpd", "--pdf", dest="download_pdfs", action="store_true", help="NI - Download PDF links")
-#     download_group.add_argument("-dc", "--pages", dest="crawl_canvas_pages", action="store_true", help="NI - Download linked Canvas pages")
+    download_group = clone_parser.add_argument_group("Download Options")
+    download_group.add_argument("-dpd", "--pdf", dest="download_pdfs", action="store_true", help="NI - Download PDF links")
+    download_group.add_argument("-ddx", "--docx", dest="download_docx", action="store_true", help="NI - Download DOCX links")
+    download_group.add_argument("-dc", "--pages", dest="crawl_canvas_pages", action="store_true", help="NI - Download linked Canvas pages")
 #     download_group.add_argument("-da", "--download-all", dest="download_all_files", action="store_true", help="NI - Download all related files (e.g. images, zips)")
 #     download_group.add_argument("-ds", "--download-submissions", dest="download_submissions", action="store_true", help="NI - Download all submissions")
-#     download_group.add_argument("-dd", "--delete-temp", dest="delete_after_convert", action="store_true", help="NI - Delete temporary files after processing")
+    download_group.add_argument("-dd", "--delete-temp", dest="delete_after_convert", action="store_true", help="NI - Delete temporary files after processing")
 
 def parse_args_and_dispatch(command_handlers: Dict[str, Callable]) -> None:
     """

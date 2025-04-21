@@ -133,10 +133,10 @@ Future improvements and features planned for Canvas CLI:
 
 - 🔄 Consider git remote paradigm over npm package.json for `canvas init`
 - 💬 ~~Add `canvas pull` to download current submissions~~
-- ⬇️ Add `canvas clone` to get assignment descriptions
+- ⬇️ ~~Add `canvas clone` to get assignment descriptions~~
 - ⚙️ Implement cascading config scope like git
 - 🔍 ~~Build a TUI for getting course ID and assignment ID from name~~
-- 📊 Add ability to retrieve versioning of submissions
+- 📊 ~~Add ability to retrieve versioning of submissions~~
 - 📅 ~~Implement `git status`-like command to get due dates, grading status, and comments~~
     - 🎓 Get grades via submissions
     - 🏛️ Show completed vs open assignments
@@ -149,6 +149,7 @@ Future improvements and features planned for Canvas CLI:
 - 📦 Add support for submitting multiple files at once
 - 📃 Add support for pagination
 - 📂 Add file select support to TUIs
+- 🪙 Add real caching between calls rather than just in place
 
 ## 🤝 Contributing
 
