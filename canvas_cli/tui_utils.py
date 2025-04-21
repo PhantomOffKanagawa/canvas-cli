@@ -80,25 +80,35 @@ class FuzzySearch:
         if not text or not pattern:
             return 0
 
-        # Try strict sequential match (all pattern chars in order)
-        i, j = 0, 0
-        first_match = -1
-        gaps = 0
-        while i < len(text) and j < len(pattern):
-            if text[i] == pattern[j]:
-                if first_match == -1:
-                    first_match = i
-                j += 1
-            else:
-                gaps += 1
-            i += 1
-
-        if j == len(pattern):
-            # Score based on how early the match starts, number of gaps, and pattern length
-            base = 50
-            penalty = (first_match if first_match != -1 else 0) + gaps
-            bonus = max(0, len(pattern) - gaps)
-            return base + bonus - penalty
+        # Allow for some missing characters (fuzzy matching)
+        # We can skip up to a quarter of the pattern length in gaps
+        max_missing = max(len(pattern) // 4, 2)
+        for allowed_missing in range(1, max_missing + 1):
+            i, j = 0, 0
+            missing = 0
+            first_match = -1
+            gaps = 0
+            while i < len(text) and j < len(pattern):
+                if text[i] == pattern[j]:
+                    if first_match == -1:
+                        first_match = i
+                    j += 1
+                else:
+                    gaps += 1
+                    i += 1
+                    continue
+                i += 1
+            # If not all pattern chars matched, try skipping some
+            if j < len(pattern):
+                missing = len(pattern) - j
+            if missing <= allowed_missing:
+                base = 50
+                # Calculate score based on the number of gaps and missing characters
+                # The more gaps or missing characters, the lower the score
+                # Calculate missing character penalty as a ratio of the allowed missing
+                penalty = (first_match if first_match != -1 else 0) + gaps + (missing // allowed_missing) * 20
+                bonus = max(0, len(pattern) - gaps - missing)
+                return base + bonus - penalty
 
         # No fuzzy match found
         return 0
