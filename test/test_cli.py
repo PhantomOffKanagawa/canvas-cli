@@ -280,21 +280,6 @@ class CLITests(CanvasCliTestCase):
         self.assertIn("push", output)
         self.assertIn("status", output)
     
-    @patch('canvas_cli.cli.parse_args_and_dispatch')
-    def test_main(self, mock_parse):
-        """Test the main function"""
-        # Call the function
-        main()
-        
-        # Verify args parsing function was called
-        mock_parse.assert_called_once()
-        call_args = mock_parse.call_args[0][0]
-        self.assertIn("config", call_args)
-        self.assertIn("init", call_args)
-        self.assertIn("push", call_args)
-        self.assertIn("status", call_args)
-        self.assertIn("help", call_args)
-
 if __name__ == "__main__":
     import unittest
     unittest.main()

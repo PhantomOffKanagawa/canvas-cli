@@ -5,12 +5,15 @@ Contains argument parser configuration for the command-line interface
 
 import argparse
 from typing import Callable, Dict
+from .__version__ import __version__
 
 def create_parser() -> argparse.ArgumentParser:
     """Create the main argument parser for Canvas CLI"""
     
     # Create the main parser
     parser = argparse.ArgumentParser(description="Canvas CLI tool")
+    # Add version argument
+    parser.add_argument('--version', action='version', version=f'canvas-cli (canvas-cmd) version {__version__}', help='Show version information')
     # Subparsers for different commands
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
     subparsers.required = True

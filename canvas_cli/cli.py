@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 import os
 import pydoc
+from .__version__ import __version__
 
 from .config import Config
 from .api import CanvasAPI, format_date

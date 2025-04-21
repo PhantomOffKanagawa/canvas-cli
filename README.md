@@ -118,8 +118,10 @@ canvas push -cid 123456 -aid 789012 -f solution.py
 
 ## 📊 Requirements
 
-- Python 3.6+
+- Python 3.9+
 - Requests library
+- Canvas API key
+- Additional dependencies optional
 
 ## 📜 License
 
