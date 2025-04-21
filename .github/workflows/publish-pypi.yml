@@ -52,15 +52,18 @@ jobs:
         with:
           name: release-dists
           path: dist/
-
   pypi-publish:
     runs-on: ubuntu-latest
     needs: release-build
     
+    # For first publication only, we'll use an API token
+    # After the initial release, switch back to trusted publishing
     permissions:
       # This permission is mandatory for trusted publishing
       id-token: write
       
+
+
     # Protected environment for publishing
     environment:
       name: pypi
@@ -75,3 +78,7 @@ jobs:
 
       - name: Publish release distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          # Remove this parameter after first successful publication
+          # and uncomment the permissions block below
