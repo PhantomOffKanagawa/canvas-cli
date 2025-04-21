@@ -2,12 +2,13 @@
 Tests for the TUI module
 """
 
+from pathlib import Path
 from random import randint
 import sys
 from unittest.mock import ANY, patch, MagicMock, call
 
 from test_base import CanvasCliTestCase
-from canvas_cli.tui import run_tui, select_from_options
+from canvas_cli.tui import run_tui, select_file, select_from_options
 
 class TUITests(CanvasCliTestCase):
     """Tests for the TUI module"""

@@ -2,7 +2,7 @@
 Helper functions for the CLI
 """
 
-from .tui import run_tui
+from .tui import run_tui, select_file
 from .config import Config
 
 def get_needed_args(args, required_args, verbose=False):
@@ -43,6 +43,18 @@ def get_needed_args(args, required_args, verbose=False):
         if verbose:
             print(f"Selected course: {args.course_name} (ID: {args.course_id})")
             print(f"Selected assignment: {args.assignment_name} (ID: {args.assignment_id})")
+            
+        if 'file' in required_args:
+            directory = args.output_directory if 'output_directory' in args else None
+            file = select_file(directory, "Select a File", args.fallback_tui)
+            
+            if file is None:
+                print("File selection cancelled.")
+            else:
+                if verbose:
+                    print(f"Selected file: {file}")
+                # Update args with the selected file
+                args.file = file
             
     still_missing = [
         arg for arg in required_args if getattr(args, arg) is None

@@ -26,7 +26,7 @@ class FuzzySearch:
             Score of the match (higher is better match), 0 if no match
         """
         # Extract searchable text from the item
-        name = item.get('name', '').lower()
+        name = item.get('name', '').lower() or item.get('meta_label', '').lower() or item.get('meta_data', '').lower()
         code = item.get('course_code', '').lower() if 'course_code' in item else ''
         desc = item.get('description', '').lower() if 'description' in item else ''
         

@@ -15,7 +15,7 @@ from .__version__ import __version__
 from .config import Config
 from .api import CanvasAPI, download_file, format_date
 from .args import parse_args_and_dispatch
-from .tui import run_tui, select_from_options
+from .tui import run_tui, select_file, select_from_options
 from .command_status import show_global_status, show_local_status
 
 def config_command(args):
@@ -92,6 +92,14 @@ def init_command(args):
     except Exception as e:
         print(f"Error: {e}")
         return
+    
+    # If file set and can be relative, make it relative to the current directory
+    if 'file' in args and args.file is not None:
+        file_path = Path(args.file).resolve()
+        try:
+            args.file = os.path.join('./', file_path.relative_to(Path.cwd()))
+        except ValueError:
+            args.file = file_path
         
     # Check if the current directory is a valid project directory
     # If so, use existing values as defaults
@@ -239,9 +247,13 @@ def pull_command(args):
             display_name = ", ".join([attach.get("display_name", None) for attach in submission.get("attachments", None)])
             submissions[i]["meta_label"] = f"Submission {i+1}{' - ' + format_date(submitted_at) if submitted_at else ''}{' - ' + submission_type if submission_type else ''}{' - ' + score + '/' + points_possible if score and points_possible else ''}{' - ' + display_name if display_name else ' - No Display Name'}"
         
-        use_tui = not fallback_tui and (tui_for_download or tui)
-        selected_submission = select_from_options(submissions, "meta_label", "Select a submission to download:", fallback=use_tui)
-            
+        use_fallback = fallback_tui or not (tui_for_download or tui)
+        selected_submission = select_from_options(submissions, "meta_label", "Select a submission to download:", fallback=use_fallback)
+        
+        if selected_submission is None:
+            print("No submission selected.")
+            return
+        
         attachments = selected_submission.get("attachments", None)
         if attachments:
             for attach in attachments:

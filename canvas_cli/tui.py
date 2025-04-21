@@ -408,13 +408,80 @@ def text_select_course_and_assignment() -> Tuple[Optional[Dict], Optional[Dict]]
     return selected_course, selected_assignment
 
 
-def select_from_options(options: List[Dict], label_key: str, title: str = "Select an option", fallback=False) -> Optional[Dict]:
+def select_file(start_dir: str = None, title: str = "Select a File", fallback=False) -> Optional[str]:
+    """File selector that allows navigating directories and selecting a file
+    
+    Args:
+        start_dir: Directory to start in (defaults to current directory)
+        title: Title to display above the selection list
+        fallback: Whether to force fallback to text-based interface
+        
+    Returns:
+        The selected file path or None if cancelled
+    """
+    import os
+    from pathlib import Path
+    
+    # Start in current directory if not specified
+    current_dir = Path(start_dir).resolve() if start_dir else Path.cwd()
+    selected_path = None
+    
+    while True:
+        # Get directory contents
+        try:
+            # Create list of parent directory entry
+            items = []
+            if current_dir.parent != current_dir:  # Not at root
+                items.append({
+                    'name': '..',
+                    'path': str(current_dir.parent),
+                    'is_dir': True,
+                    'size': '',
+                    'modified': ''
+                })
+            
+            # Add directories first
+            for entry in sorted(os.scandir(current_dir), key=lambda e: (not e.is_dir(), e.name.lower())):
+                items.append({
+                    'name': entry.name,
+                    'path': str(Path(entry.path)),
+                    'is_dir': entry.is_dir(),
+                    'size': '' if entry.is_dir() else os.path.getsize(entry.path),
+                    'modified': os.path.getmtime(entry.path)
+                })
+        except (PermissionError, FileNotFoundError) as e:
+            print(f"Error accessing directory: {e}")
+            
+        # Define display function
+        def format_file_entry(item, _):
+            prefix = '[d] ' if item.get('is_dir') else '(f) '
+            size = '' if item.get('is_dir') else f" ({item.get('size', 0) / 1024:.1f} KB)"
+            return f"{prefix}{item.get('name')}{size}"
+            
+        # Show current path in title
+        path_title = f"{title} - {current_dir}"
+        
+        # Use select_from_options to display the file list
+        selected = select_from_options(items, 'name', path_title, fallback, formatter=format_file_entry)
+        
+        if selected is None:
+            return None  # User cancelled
+            
+        # If directory, navigate to it. If file, return it.
+        if selected.get('is_dir'):
+            current_dir = Path(selected.get('path'))
+        else:
+            return selected.get('path')  # Return the selected file path
+
+def select_from_options(options: List[Dict], label_key: str, title: str = "Select an option", fallback=False, formatter=None) -> Optional[Dict]:
     """Present a list of options to the user and return the selected one
     
     Args:
         options: List of dictionary objects to select from
         label_key: Key to use for displaying each option
         title: Title to display above the selection list
+        fallback: Whether to force fallback to text-based interface
+        formatter: Custom formatter function for displaying items
         
     Returns:
         The selected dictionary object or None if cancelled
@@ -455,7 +522,7 @@ def select_from_options(options: List[Dict], label_key: str, title: str = "Selec
                     stdscr.addstr(height - 1, 0, help_text[:width-1])
                     
                     # Render option list
-                    option_list.render(stdscr, 0, 0, height - 2, width, formatter=display_option)
+                    option_list.render(stdscr, 0, 0, height - 2, width, formatter=formatter)
                     
                     # Refresh screen
                     stdscr.refresh()
