@@ -48,3 +48,20 @@ def load_project_config(config_dir: Path = None) -> dict:
 Now your magical tests can properly patch `Path.cwd()` because it gets called each time the function runs!
 
 ---
+
+## Local Github Actions w/ Act
+
+### What Is My GitHub Actions Workflow Gonna Do?
+
+Act is a tool that allows you to run GitHub Actions locally. It simulates the GitHub Actions environment on your local machine, making it easier to test and debug workflows before pushing them to GitHub.
+
+### How Do I Use Act?
+
+`act -W .github/workflows/your_workflow.yml --artifact-server-path ./artifacts`
+- `-W` specifies the workflow file to run
+- `--artifact-server-path` specifies the directory to store artifacts generated during the workflow run
+
+> This command will run the specified workflow and store any artifacts in the `./artifacts` directory. \
+> You can then inspect the artifacts to verify that the workflow ran as expected.
+
+---

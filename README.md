@@ -1,6 +1,7 @@
 # 🎓 Canvas CLI
 
 ![Status](https://img.shields.io/badge/Status-Pre--Release-yellow?style=for-the-badge&logo=github)
+![Tests](https://github.com/PhantomOffKanagawa/canvas-cli/actions/workflows/run-tests.yml/badge.svg)
 ![Python](https://img.shields.io/badge/Python-3.6+-blue?style=for-the-badge&logo=python)
 ![License](https://img.shields.io/badge/License-GPLv3-green?style=for-the-badge)
 

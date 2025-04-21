@@ -30,6 +30,7 @@ env/
 canvas.json
 .canvascli/
 *.log
+.coverage
 
 # IDE files
 .idea/
