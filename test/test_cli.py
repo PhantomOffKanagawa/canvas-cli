@@ -6,11 +6,12 @@ import sys
 import io
 import json
 import tempfile
+import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock, call
 
 from test_base import CanvasCliTestCase
-from canvas_cli.cli import config_command, init_command, push_command, status_command, help_command, main
+from canvas_cli.cli import config_command, init_command, pull_command, push_command, status_command, help_command, main
 
 class CLITests(CanvasCliTestCase):
     """
@@ -279,7 +280,131 @@ class CLITests(CanvasCliTestCase):
         self.assertIn("init", output)
         self.assertIn("push", output)
         self.assertIn("status", output)
-    
+    @patch('canvas_cli.cli.select_from_options')
+    @patch('canvas_cli.cli.download_file')
+    @patch('canvas_cli.cli.CanvasAPI')
+    @patch('canvas_cli.cli.Path')
+    def test_pull_command_latest_download(self, mock_path, mock_api_class, mock_download_file, mock_select_from_options):
+        # Setup args
+        args = MagicMock()
+        args.course_id = 123
+        args.assignment_id = 456
+        args.download_latest = True
+        args.output_directory = "output"
+        args.overwrite_file = True
+
+        # Setup mocks
+        mock_api = mock_api_class.return_value
+        attachments = [
+            {"url": "http://file.url/1", "filename": "file1.txt", "display_name": "file1.txt"},
+            {"url": "http://file.url/2", "filename": "file2.txt", "display_name": "file2.txt"}
+        ]
+        submission = {"attachments": attachments}
+        submissions_resp = {
+            "submission_history": [submission],
+            "assignment": {"points_possible": "100"}
+        }
+        mock_api.get_submissions.return_value = submissions_resp
+        mock_path.cwd.return_value.joinpath.return_value.resolve.return_value = "/abs/output"
+
+        # Call function
+        pull_command(args)
+
+        # Assert download_file called for each attachment
+        expected_calls = [
+            ((a["url"], os.path.join("/abs/output", a["filename"])),)
+            for a in attachments
+        ]
+        # Compare only the first two arguments of each call
+        actual_calls = [tuple(call.args[:2]) for call in mock_download_file.call_args_list]
+        for expected, actual in zip(expected_calls, actual_calls):
+            # expected is a tuple of one tuple, so flatten
+            assert expected[0] == actual
+
+    @patch('canvas_cli.cli.select_from_options')
+    @patch('canvas_cli.cli.download_file')
+    @patch('canvas_cli.cli.CanvasAPI')
+    @patch('canvas_cli.cli.Path')
+    def test_pull_command_select_submission(self, mock_path, mock_api_class, mock_download_file, mock_select_from_options):
+        # Setup args
+        args = MagicMock()
+        args.course_id = 123
+        args.assignment_id = 456
+        args.download_latest = False
+        args.output_directory = "output"
+        args.overwrite_file = False
+
+        # Setup mocks
+        mock_api = mock_api_class.return_value
+        attachments1 = [{"url": "http://file.url/1", "filename": "file1.txt", "display_name": "file1.txt"}]
+        attachments2 = [{"url": "http://file.url/2", "filename": "file2.txt", "display_name": "file2.txt"}]
+        submission1 = {"attachments": attachments1, "submitted_at": "2024-01-01T00:00:00Z", "submission_type": "online_upload", "score": "90"}
+        submission2 = {"attachments": attachments2, "submitted_at": "2024-01-02T00:00:00Z", "submission_type": "online_upload", "score": "100"}
+        submissions_resp = {
+            "submission_history": [submission1, submission2],
+            "assignment": {"points_possible": "100"}
+        }
+        mock_api.get_submissions.return_value = submissions_resp
+        mock_path.cwd.return_value.joinpath.return_value.resolve.return_value = "/abs/output"
+        mock_select_from_options.return_value = submission2
+
+        # Call function
+        pull_command(args)
+
+        # Assert download_file called for the selected submission's attachment
+        mock_download_file.assert_called_once_with(
+            "http://file.url/2", os.path.join("/abs/output", "file2.txt"), overwrite=False
+        )
+
+    @patch('canvas_cli.cli.CanvasAPI')
+    def test_pull_command_no_submissions(self, mock_api_class):
+        args = MagicMock()
+        args.course_id = 123
+        args.assignment_id = 456
+        args.download_latest = True
+        args.output_directory = "output"
+        args.overwrite_file = True
+
+        mock_api = mock_api_class.return_value
+        mock_api.get_submissions.return_value = None
+
+        pull_command(args)
+        output = self.mock_stdout.getvalue()
+        self.assertIn("No submissions found for assignment", output)
+        
+    @patch('canvas_cli.cli.CanvasAPI')
+    def test_pull_command_missing_args(self, mock_api_class):
+            args = MagicMock()
+            args.course_id = None
+            args.assignment_id = None
+            args.download_latest = True
+            args.output_directory = "output"
+            args.overwrite_file = True
+
+            # Ensure get_submissions returns None, not a MagicMock
+            mock_api_class.return_value.get_submissions.return_value = None
+
+            # Patch Path.cwd to a temp directory to avoid accessing the real cwd
+            with patch('pathlib.Path.cwd', return_value=Path(self.temp_dir)):
+                pull_command(args)
+            output = self.mock_stdout.getvalue()
+            self.assertIn("Please provide all requirements", output)
+
+    @patch('canvas_cli.cli.CanvasAPI')
+    def test_pull_command_api_error(self, mock_api_class):
+        args = MagicMock()
+        args.course_id = 123
+        args.assignment_id = 456
+        args.download_latest = True
+        args.output_directory = "output"
+        args.overwrite_file = True
+
+        mock_api_class.side_effect = ValueError("API error")
+
+        pull_command(args)
+        output = self.mock_stdout.getvalue()
+        self.assertIn("Error: API error", output)
+
 if __name__ == "__main__":
     import unittest
     unittest.main()

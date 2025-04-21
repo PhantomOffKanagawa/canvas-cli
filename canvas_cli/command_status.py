@@ -9,6 +9,8 @@ import random
 
 from canvas_cli.api import format_date
 import shutil
+from html import unescape
+import re
 
 def show_global_status(api, args):
     """Show grade status for all courses with improved terminal formatting
@@ -157,11 +159,35 @@ def show_local_status(args: dict, api, course_id, assignment_id) -> None:
     if not course:
         print("Course not found.")
         return
+    
+    all = args.all
 
     if not assignment_id or args.course_details:
+        # Course details
         print(f"=== Course Status ===")
         print(f"Course: {course.get('name')} ({course.get('course_code')})")
-        print(f"ID: {course.get('id')}")
+        print(f"Course ID: {course.get('id')}")
+
+        if all:
+            print(f"Locale: {course.get('locale', 'N/A')}, Time Zone: {course.get('time_zone', 'N/A')}")
+            print(f"Created: {format_date(course.get('created_at'))}")
+            print(f"Sections:")
+            for section in course.get('sections', []):
+                print(f"  - {section.get('name')} (ID: {section.get('id')}, Role: {section.get('enrollment_role')})")
+        enrollments = course.get('enrollments', [])
+        if enrollments:
+            enrollment = enrollments[0]
+            if all:
+                print(f"Enrollment: {enrollment.get('role')} (State: {enrollment.get('enrollment_state')})")
+            print(f"Current Grade: {enrollment.get('computed_current_grade')} ({enrollment.get('computed_current_score')}%)")
+            print(f"Final Grade: {enrollment.get('computed_final_grade')} ({enrollment.get('computed_final_score')}%)")
+        
+        if all:
+            print(f"Public: {course.get('is_public')}, Workflow State: {course.get('workflow_state')}")
+            print(f"Storage Quota: {course.get('storage_quota_mb')} MB")
+            print(f"Apply Assignment Group Weights: {course.get('apply_assignment_group_weights')}")
+        
+        print()
         if args.json:
             print("\nJSON Output:")
             print(json.dumps(course, indent=2))
@@ -177,20 +203,94 @@ def show_local_status(args: dict, api, course_id, assignment_id) -> None:
         print("Assignment not found.")
         return
 
+    # Assignment details
     print(f"=== Assignment Status ===")
     print(f"Course: {course.get('name')} ({course.get('course_code')})")
-    print(f"Assignment: {assignment.get('name')}")
-    print(f"ID: {assignment.get('id')}")
+    print(f"Assignment: {assignment.get('name')} (ID: {assignment.get('id')})")
+    print(f"URL: {assignment.get('html_url')}")
+    print(f"Status: {assignment.get('workflow_state').capitalize()}")
+    print(f"Points Possible: {assignment.get('points_possible')}")
+    
+    if all:
+        print(f"Grading Type: {assignment.get('grading_type')}")
+        print(f"Assignment Group ID: {assignment.get('assignment_group_id')}")
+        print(f"Created: {format_date(assignment.get('created_at'))}")
+        print(f"Updated: {format_date(assignment.get('updated_at'))}")
     print(f"Due: {format_date(assignment.get('due_at'))}")
     if assignment.get('lock_at'):
         locked = assignment.get('locked_for_user', False)
         print(f"{'Locked' if locked else 'Locks'}: {format_date(assignment.get('lock_at'))}")
     if assignment.get('unlock_at'):
         print(f"Unlocks: {format_date(assignment.get('unlock_at'))}")
-    print(f"Points Possible: {assignment.get('points_possible')}")
+    print(f"Published: {'Yes' if assignment.get('published') else 'No'}")
+    print(f"Submission Types: {', '.join(assignment.get('submission_types', []))}")
+    
+    if all:
+        print(f"Peer Reviews: {'Yes' if assignment.get('peer_reviews') else 'No'}")
+        print(f"Anonymous Grading: {'Yes' if assignment.get('anonymous_grading') else 'No'}")
+        print(f"Visible to Everyone: {'Yes' if assignment.get('visible_to_everyone') else 'No'}")
+    
+    print(f"Rubric Used: {'Yes' if assignment.get('use_rubric_for_grading') else 'No'}")
+    if assignment.get('rubric'):
+        print(f"Rubric: {assignment['rubric_settings'].get('title', 'Untitled')}")
+        for idx, criterion in enumerate(assignment['rubric'], 1):
+            print(f"  {idx}. {criterion.get('description')} ({criterion.get('points')} pts)")
+    
+    if all:
+        if assignment.get('description'):
+            desc = assignment['description']
+            desc = re.sub('<[^<]+?>', '', desc)  # Strip HTML tags
+            desc = unescape(desc).strip()
+            if desc:
+                print("\nDescription:")
+                print(desc)
 
-    if args.grades or args.comments or args.all:
-        print("\nSubmission and grading details will be implemented later.")
+    # Submission details
+    submission = assignment.get('submission')
+    if submission:
+        print("\n=== Submission Status ===")
+        print(f"Submitted: {'Yes' if submission.get('submitted_at') else 'No'}")
+        if submission.get('submitted_at'):
+            print(f"Submitted At: {format_date(submission.get('submitted_at'))}")
+        
+        if all:
+            print(f"Score: {submission.get('score')}")        
+        print(f"Grade: {submission.get('grade')} / {assignment.get('points_possible')}")
+        print(f"Grade Percentage: {submission.get('grade') / assignment.get('points_possible') * 100:.2f}%")
+        
+        if all:
+            print(f"Attempt: {submission.get('attempt')}")
+            print(f"Workflow State: {submission.get('workflow_state')}")
+            print(f"Late: {'Yes' if submission.get('late') else 'No'}")
+            print(f"Missing: {'Yes' if submission.get('missing') else 'No'}")
+        
+        if submission.get('attachments'):
+            print("Attachments:")
+            for att in submission['attachments']:
+                print(f"  - {att.get('display_name')} ({att.get('size', 0)//1024} KB): {att.get('url')}")
+        
+        if all:
+            if submission.get('preview_url'):
+                print(f"Preview URL: {submission.get('preview_url')}")
+            if submission.get('graded_at'):
+                print(f"Graded At: {format_date(submission.get('graded_at'))}")
+            if submission.get('posted_at'):
+                print(f"Posted At: {format_date(submission.get('posted_at'))}")
+            if submission.get('excused'):
+                print("Excused: Yes")
+        if submission.get('points_deducted') is not None:
+            print(f"Points Deducted: {submission.get('points_deducted')}")
+        if submission.get('redo_request'):
+            print("Redo Requested: Yes")
+    else:
+        print("\nNo submission found for this assignment.")
+
+    # Score statistics
+    stats = assignment.get('score_statistics')
+    if stats:
+        print("\n=== Score Statistics ===")
+        print(f"Min: {stats.get('min')}, Max: {stats.get('max')}, Mean: {stats.get('mean')}")
+        print(f"Median: {stats.get('median')}, Lower Q: {stats.get('lower_q')}, Upper Q: {stats.get('upper_q')}")
 
     if args.json:
         output = {

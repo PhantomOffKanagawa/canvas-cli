@@ -13,9 +13,9 @@ from canvas_cli.cli_utils import get_needed_args, need_argument_output
 from .__version__ import __version__
 
 from .config import Config
-from .api import CanvasAPI, format_date
+from .api import CanvasAPI, download_file, format_date
 from .args import parse_args_and_dispatch
-from .tui import run_tui
+from .tui import run_tui, select_from_options
 from .command_status import show_global_status, show_local_status
 
 def config_command(args):
@@ -167,49 +167,155 @@ Press ^C at any time to quit."""
     print()
     
 def pull_command(args):
-    """Handle the pull command to download assignments"""
-    
+    """Handle the pull command to download submissions"""
     # Try to get the course_id and assignment_id from the config
     try:
-        get_needed_args(args, ["course_id", "assignment_id"], True)
+        missing_args = get_needed_args(args, ["course_id", "assignment_id"], True)
     except Exception as e:
         print(f"Error: {e}")
         return
     
-    
-    # Check if course_id and assignment_id are provided
-    course_id = args.course_id
-    assignment_id = args.assignment_id
-
-    # If still missing required arguments, show error and exit
-    if not course_id or not assignment_id:
-        print("Error: Missing course_id or assignment_id.")
-        print("Please provide both course ID and assignment ID.")
+    if missing_args:
+        need_argument_output("pull", missing_args)
         return
     
-    # Initialize API client
+    # Determine Course and Assignment IDs
+    course_id = args.course_id
+    assignment_id = args.assignment_id
+    
+    # Determine what we need to clone using download-group
+    download_latest: bool = args.download_latest
+    
+    # Determine how output will be handled using output-group
+    output_directory: str = Path.cwd().joinpath(Path(args.output_directory)).resolve()
+    overwrite: bool = args.overwrite_file
+    tui = args.tui
+    tui_for_download = args.download_tui
+    fallback_tui = args.fallback_tui
+    
+    # Get API client
     try:
         api = CanvasAPI()
     except ValueError as e:
         print(f"Error: {e}")
         return
-
-    # Get the assignment details
-    try:
-        assignment = api.get_assignment_details(course_id, assignment_id)
-        if not assignment:
-            print(f"Assignment with ID {assignment_id} not found in course {course_id}.")
-            return
-    except Exception as e:
-        print(f"Error fetching assignment details: {e}")
+    
+    # Get the submissions response json
+    submissions_resp = api.get_submissions(course_id, assignment_id)
+    if not submissions_resp:
+        print(f"No submissions found for assignment {assignment_id} in course {course_id}.")
         return
+    
+    # Get the submissions from the response
+    submissions = submissions_resp.get("submission_history", None)
+    
+    # If there are no submissions, show an error message
+    if not submissions or len(submissions) == 0:
+        print(f"No submissions found for assignment {assignment_id} in course {course_id}.")
+        return
+    # If there is only one submission or the user wants to download the latest, download it
+    elif len(submissions) == 1 or download_latest:
+        # Get the latest submission
+        print(f"Found {len(submissions)} submission for assignment {assignment_id} in course {course_id}.")
+        
+        # Get attachments from the latest submission
+        attachments = submissions[len(submissions) - 1].get("attachments", None)
+        
+        # Download the attachments if they exist
+        for attach in attachments:
+            download_file(attach.get("url", None), os.path.join(output_directory, attach.get("filename", None)), overwrite=overwrite)
+        print(f"Downloaded {len(attachments)} attachments from the latest submission to {output_directory}.")
+        return
+            
+    else:
+        # If there are multiple submissions, show a list to the user and let them select one
+        print(f"Found {len(submissions)} submissions for assignment {assignment_id} in course {course_id}.")
+        # Inject Labels into the submissions for display
+        points_possible = submissions_resp.get("assignment", {}).get("points_possible", None)
+        for i, submission in enumerate(submissions):
+            submitted_at = submission.get("submitted_at", None)
+            submission_type = submission.get("submission_type", None)
+            score = submission.get("score", None) or submission.get("points", None)
+            display_name = ", ".join([attach.get("display_name", None) for attach in submission.get("attachments", None)])
+            submissions[i]["meta_label"] = f"Submission {i+1}{' - ' + format_date(submitted_at) if submitted_at else ''}{' - ' + submission_type if submission_type else ''}{' - ' + score + '/' + points_possible if score and points_possible else ''}{' - ' + display_name if display_name else ' - No Display Name'}"
+        
+        use_tui = not fallback_tui and (tui_for_download or tui)
+        selected_submission = select_from_options(submissions, "meta_label", "Select a submission to download:", fallback=use_tui)
+            
+        attachments = selected_submission.get("attachments", None)
+        if attachments:
+            for attach in attachments:
+                download_file(attach.get("url", None), os.path.join(output_directory, attach.get("filename", None)), overwrite=overwrite)
+        print(f"Downloaded {len(attachments)} attachments to {output_directory}.")
+        return
+    
+    
+# def clone_command(args):
+#     """Handle the clone command to download assignments"""
+#     # Try to get the course_id and assignment_id from the config
+#     try:
+#         missing_args = get_needed_args(args, ["course_id", "assignment_id"], True)
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         return
+    
+#     if missing_args:
+#         need_argument_output("clone", missing_args)
+#         return
+    
+#     # Determine Course and Assignment IDs
+#     course_id = args.course_id
+#     assignment_id = args.assignment_id
+    
+#     # Determine what we need to clone using download-group
+#     download_pdfs: bool = args.download_pdfs
+#     crawl_canvas_pages: bool = args.crawl_canvas_pages
+#     download_all_files: bool = args.download_all_files
+#     download_submissions: bool = args.download_submissions
+#     delete_after_download: bool = args.delete_after_download
+    
+#     # Determine formatting actions using format-group
+#     keep_html_file: bool = args.keep_html_file
+#     convert_to_markdown: bool = args.convert_to_markdown
+#     integrate_together: bool = args.integrate_together
+#     convert_links: bool = args.convert_links
+    
+#     # Determine output options using output-group
+#     output_file_destination: str = args.output_file_destination
+#     output_directory: str = args.output_directory
+#     output_to_stdout: bool = args.output_to_stdout
+#     display_in_terminal: bool = args.display_in_terminal
+#     overwrite: bool = args.overwrite_file
+    
+#     # Calculated attributes
+#     do_save_main_file: bool = output_file_destination is not None
+#     will_have_temp_files: bool = ((download_pdfs or crawl_canvas_pages) and convert_to_markdown)
+#     use_temp_dir: bool = delete_after_download and will_have_temp_files
+#     temp_dir: str = os.path.join(os.getcwd(), output_directory, ".canvas.temp")
+    
+#     # Initialize API client
+#     try:
+#         api = CanvasAPI()
+#     except ValueError as e:
+#         print(f"Error: {e}")
+#         return
 
-    # Download the submission file
-    try:
-        file_path = api.download_submission_file(course_id, assignment["submission"]["id"])
-        print(f"Downloaded submission file to {file_path}.")
-    except Exception as e:
-        print(f"Error downloading submission file: {e}")
+#     # Get the assignment details
+#     try:
+#         assignment = api.get_assignment_details(course_id, assignment_id)
+#         if not assignment:
+#             print(f"Assignment with ID {assignment_id} not found in course {course_id}.")
+#             return
+#     except Exception as e:
+#         print(f"Error fetching assignment details: {e}")
+#         return
+
+#     # Download the submission file
+#     try:
+#         file_path = api.download_submission_file(course_id, assignment["submission"]["id"])
+#         print(f"Downloaded submission file to {file_path}.")
+#     except Exception as e:
+#         print(f"Error downloading submission file: {e}")
 
 def push_command(args):
     """Handle the push command to submit assignments"""

@@ -159,6 +159,7 @@ class CanvasAPI:
         if cache_key in self.cache and (datetime.now() - self.cache_time.get(cache_key, datetime.min)).total_seconds() < self.cache_expiry:
             return self.cache[cache_key]
 
+        # Default params
         if props is None:
             props = {}
 
@@ -177,7 +178,7 @@ class CanvasAPI:
             print(f"Error fetching course details: {e}")
             return {}
     
-    def get_assignment_details(self, course_id: int, assignment_id: int) -> Dict:
+    def get_assignment_details(self, course_id: int, assignment_id: int, props: dict = None) -> Dict:
         """Get detailed information about an assignment
         
         Args:
@@ -192,9 +193,15 @@ class CanvasAPI:
         if cache_key in self.cache and (datetime.now() - self.cache_time.get(cache_key, datetime.min)).total_seconds() < self.cache_expiry:
             return self.cache[cache_key]
 
+        # Default params
+        if props is None:
+            props = {
+                'include[]': ['submission', 'score_statistics', 'can_edit'],
+            }
+
         try:
             url = f"{self.base_url}/courses/{course_id}/assignments/{assignment_id}"
-            response = requests.get(url, headers=self.headers)
+            response = requests.get(url, headers=self.headers, params=props)
             response.raise_for_status()
             assignment_details = response.json()
             
@@ -207,7 +214,7 @@ class CanvasAPI:
             print(f"Error fetching assignment details: {e}")
             return {}
     
-    def get_submissions(self, course_id: int, assignment_id: int) -> Dict:
+    def get_submissions(self, course_id: int, assignment_id: int, props: dict = None) -> Dict:
         """Get the current user's submission for an assignment
         
         Args:
@@ -222,9 +229,16 @@ class CanvasAPI:
         if cache_key in self.cache and (datetime.now() - self.cache_time.get(cache_key, datetime.min)).total_seconds() < self.cache_expiry:
             return self.cache[cache_key]
 
+        # Default params
+        if props is None:
+            props = {
+                'include[]': ['submission_history', 'submission_comments', 'submission_html_comments', 'rubric_assessment',
+                              'assignment', 'visibility', 'course', 'user', 'group', 'read_status', 'student_entered_score'],
+            }
+            
         try:
             url = f"{self.base_url}/courses/{course_id}/assignments/{assignment_id}/submissions/self"
-            response = requests.get(url, headers=self.headers)
+            response = requests.get(url, headers=self.headers, params=props)
             response.raise_for_status()
             submission_data = response.json()
             
@@ -320,3 +334,27 @@ def format_date(date_str):
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     except:
         return date_str
+
+def download_file(url: str, file_path: str, overwrite: bool = False) -> None:
+    """Download a file from a URL
+
+    Args:
+        url: URL of the file to download
+        file_path: Path to save the downloaded file
+        overwrite: Flag to indicate whether to overwrite the file if it exists
+
+    Returns:
+        None
+    """
+    if not overwrite and os.path.exists(file_path):
+        print(f"File {file_path} already exists. Overwrite? (y/N): ", end='')
+        
+        response = input().strip().lower()
+        if response not in ['y', 'yes']:
+            return
+
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    with open(file_path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)

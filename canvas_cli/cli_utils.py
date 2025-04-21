@@ -27,7 +27,7 @@ def get_needed_args(args, required_args, verbose=False):
     # Check if user requested the TUI interface
     if args.tui == True:
         # Run the TUI to select course and assignment
-        course_id, assignment_id, course_name, assignment_name = run_tui(args.fallback)
+        course_id, assignment_id, course_name, assignment_name = run_tui(args.fallback_tui)
         
         # Check if course_id and assignment_id are provided
         # If not, raise an exception

@@ -75,7 +75,7 @@ if CURSES_AVAILABLE:
             self.filtered_items = FuzzySearch.filter_and_sort_items(self.items, self.search_text)
             self.selected_idx = 0
             
-        def render(self, stdscr, y: int, x: int, height: int, width: int, type: str) -> None:
+        def render(self, stdscr, y: int, x: int, height: int, width: int, type: str = None, formatter: Callable = None) -> None:
             """Render the selection list"""
             # Adjust offset if selected item is out of view
             if self.selected_idx < self.offset:
@@ -109,7 +109,12 @@ if CURSES_AVAILABLE:
                         stdscr.attron(curses.color_pair(Formatter.get_color(item)))
                     
                     selected = self.selected_idx == item_idx
-                    Formatter.write_item(stdscr, y + i + 1, x + 1, width, item, type, selected)
+                    if type == "courses" or type == "assignments":
+                        Formatter.write_item(stdscr, y + i + 1, x + 1, width, item, type, selected)
+                    elif formatter:
+                        stdscr.addstr(y + i + 1, x + 1, formatter(item, type)[:width-2])
+                    else:
+                        stdscr.addstr(y + i + 1, x + 1, str(item)[:width-2])
                     
                     if item_idx == self.selected_idx:
                         stdscr.attroff(curses.A_REVERSE)
@@ -402,6 +407,77 @@ def text_select_course_and_assignment() -> Tuple[Optional[Dict], Optional[Dict]]
     
     return selected_course, selected_assignment
 
+
+def select_from_options(options: List[Dict], label_key: str, title: str = "Select an option", fallback=False) -> Optional[Dict]:
+    """Present a list of options to the user and return the selected one
+    
+    Args:
+        options: List of dictionary objects to select from
+        label_key: Key to use for displaying each option
+        title: Title to display above the selection list
+        
+    Returns:
+        The selected dictionary object or None if cancelled
+    """
+    # Handle empty options list
+    if not options:
+        print("No options available.")
+        return None
+        
+    # Define display function for the options
+    def display_option(item, _):
+        return f"{item.get(label_key, 'No label')}"
+        
+    # Use appropriate interface based on curses availability
+    try:
+        if CURSES_AVAILABLE and not fallback:
+            # Use curses-based selection
+            def select_with_curses(stdscr) -> Optional[Dict]:
+                # Set up curses
+                curses.curs_set(0)  # Hide cursor
+                stdscr.clear()
+                
+                # Get terminal dimensions
+                height, width = stdscr.getmaxyx()
+                
+                # Set up selection list
+                option_list = SelectionList(
+                    items=options,
+                    title=title,
+                )
+                
+                # Selection loop
+                while True:
+                    stdscr.clear()
+                    
+                    # Show help text
+                    help_text = "↑/↓: Navigate | Enter: Select | Type to search | Esc: Cancel"
+                    stdscr.addstr(height - 1, 0, help_text[:width-1])
+                    
+                    # Render option list
+                    option_list.render(stdscr, 0, 0, height - 2, width, formatter=display_option)
+                    
+                    # Refresh screen
+                    stdscr.refresh()
+                    
+                    # Get user input
+                    key = stdscr.getch()
+                    
+                    # Handle key
+                    if key == 27:  # Escape key - cancel
+                        return None
+                    
+                    result = option_list.handle_key(key)
+                    if result:
+                        return result
+            
+            return curses.wrapper(select_with_curses)
+        else:
+            # Use text-based selection
+            return select_from_list(options, display_option, title)
+    except Exception as e:
+        print(f"Error during selection: {e}")
+        return None
 
 def run_tui(fallback=False) -> Tuple[Optional[int], Optional[int], Optional[str], Optional[str]]:
     """Run the TUI to select a course and assignment

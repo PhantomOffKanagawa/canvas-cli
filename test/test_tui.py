@@ -4,10 +4,10 @@ Tests for the TUI module
 
 from random import randint
 import sys
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import ANY, patch, MagicMock, call
 
 from test_base import CanvasCliTestCase
-from canvas_cli.tui import run_tui
+from canvas_cli.tui import run_tui, select_from_options
 
 class TUITests(CanvasCliTestCase):
     """Tests for the TUI module"""
@@ -148,7 +148,55 @@ class TUITests(CanvasCliTestCase):
         self.assertIsNone(assignment_id)
         self.assertIsNone(course_name) 
         self.assertIsNone(assignment_name)
+        
+    def test_select_from_options_curses(self):
+        """Test select_from_options with curses available"""
+        # Patch CURSES_AVAILABLE to True and patch curses.wrapper
+        with patch('canvas_cli.tui.CURSES_AVAILABLE', True), \
+                patch('canvas_cli.tui.curses.wrapper') as mock_wrapper:
+            # Prepare mock options
+            options = [
+                {'id': 1, 'label': 'Option 1'},
+                {'id': 2, 'label': 'Option 2'},
+            ]
+            # Simulate user selecting the first option
+            mock_wrapper.return_value = options[0]
+            result = select_from_options(options, label_key='label', title="Test Options")
+            self.assertEqual(result, options[0])
+            mock_wrapper.assert_called_once()
 
+    def test_select_from_options_text_fallback(self):
+        """Test select_from_options with fallback to text interface"""
+        # Patch CURSES_AVAILABLE to False and patch select_from_list
+        with patch('canvas_cli.tui.CURSES_AVAILABLE', False), \
+                patch('canvas_cli.tui.select_from_list') as mock_select_from_list:
+            options = [
+                {'id': 1, 'label': 'Option 1'},
+                {'id': 2, 'label': 'Option 2'},
+            ]
+            mock_select_from_list.return_value = options[1]
+            result = select_from_options(options, label_key='label', title="Test Options")
+            self.assertEqual(result, options[1])
+            mock_select_from_list.assert_called_once_with(options, ANY, "Test Options")
+
+    def test_select_from_options_empty(self):
+        """Test select_from_options with empty options list"""
+        with patch('builtins.print') as mock_print:
+            result = select_from_options([], label_key='label', title="Empty Options")
+            self.assertIsNone(result)
+            mock_print.assert_any_call("No options available.")
+
+    def test_select_from_options_exception(self):
+        """Test select_from_options handles exceptions gracefully"""
+        # Patch CURSES_AVAILABLE to True and patch curses.wrapper to raise
+        with patch('canvas_cli.tui.CURSES_AVAILABLE', True), \
+                patch('canvas_cli.tui.curses.wrapper', side_effect=Exception("Boom")), \
+                patch('builtins.print') as mock_print:
+            options = [{'id': 1, 'label': 'Option 1'}]
+            result = select_from_options(options, label_key='label', title="Test Options")
+            self.assertIsNone(result)
+            mock_print.assert_any_call("Error during selection: Boom")
+            
 if __name__ == "__main__":
     import unittest
     unittest.main()
