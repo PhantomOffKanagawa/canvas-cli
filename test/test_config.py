@@ -120,6 +120,25 @@ class ConfigTests(CanvasCliTestCase):
         self.assertEqual(saved_config["course_id"], project_config["course_id"])
         self.assertEqual(saved_config["assignment_id"], project_config["assignment_id"])
 
+    def test_get_values_returns_first_non_none(self):
+        """Test get_values returns first non-None value from scopes"""
+        Config.set_value("multi_key", "global_val", "global")
+        with patch("canvas_cli.config.Path.cwd") as mock_cwd:
+            mock_cwd.return_value = Path(self.temp_dir)
+            Config.set_value("multi_key", "local_val", "local")
+            # Should return local first
+            val = Config.get_value("multi_key", ["local", "global"])
+            self.assertEqual(val, "local_val")
+            # Remove local, should return global
+            Config.unset_value("multi_key", "local")
+            val2 = Config.get_value("multi_key", ["local", "global"])
+            self.assertEqual(val2, "global_val")
+
+    def test_get_values_returns_none_if_not_found(self):
+        """Test get_values returns None if key not found in any scope"""
+        val = Config.get_value("notfound", ["local", "global"])
+        self.assertIsNone(val)
+        
 if __name__ == "__main__":
     import unittest
     unittest.main()

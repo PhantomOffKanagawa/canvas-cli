@@ -8,13 +8,15 @@ from pathlib import Path
 import sys
 import os
 import pydoc
+
+from canvas_cli.cli_utils import get_needed_args, need_argument_output
 from .__version__ import __version__
 
 from .config import Config
 from .api import CanvasAPI, format_date
 from .args import parse_args_and_dispatch
 from .tui import run_tui
-from .status_helpers import show_global_status, show_local_status
+from .command_status import show_global_status, show_local_status
 
 def config_command(args):
     """Handle command line arguments for configuration"""
@@ -85,24 +87,11 @@ def init_command(args):
     """Handle the init command to create a local .canvas-cli directory"""
     """Inspired by npm init"""
 
-    # Check if user requested the TUI interface
-    if args.tui:
-        # Run the TUI to select course and assignment
-        course_id, assignment_id, course_name, assignment_name = run_tui(args.fallback)
-        
-        # Check if course_id and assignment_id are provided
-        # If not, exit the function
-        if not course_id or not assignment_id:
-            return
-        
-        # Update args with values from TUI
-        args.course_id = course_id
-        args.assignment_id = assignment_id
-        args.course_name = course_name
-        args.assignment_name = assignment_name
-        
-        print(f"Selected: {course_name} (ID: {course_id})")
-        print(f"Assignment: {assignment_name} (ID: {assignment_id})")
+    try:
+        get_needed_args(args, ["course_id", "assignment_id", "course_name", "assignment_name", "file"], True)
+    except Exception as e:
+        print(f"Error: {e}")
+        return
         
     # Check if the current directory is a valid project directory
     # If so, use existing values as defaults
@@ -176,46 +165,69 @@ Press ^C at any time to quit."""
         return
     
     print()
+    
+def pull_command(args):
+    """Handle the pull command to download assignments"""
+    
+    # Try to get the course_id and assignment_id from the config
+    try:
+        get_needed_args(args, ["course_id", "assignment_id"], True)
+    except Exception as e:
+        print(f"Error: {e}")
+        return
+    
+    
+    # Check if course_id and assignment_id are provided
+    course_id = args.course_id
+    assignment_id = args.assignment_id
+
+    # If still missing required arguments, show error and exit
+    if not course_id or not assignment_id:
+        print("Error: Missing course_id or assignment_id.")
+        print("Please provide both course ID and assignment ID.")
+        return
+    
+    # Initialize API client
+    try:
+        api = CanvasAPI()
+    except ValueError as e:
+        print(f"Error: {e}")
+        return
+
+    # Get the assignment details
+    try:
+        assignment = api.get_assignment_details(course_id, assignment_id)
+        if not assignment:
+            print(f"Assignment with ID {assignment_id} not found in course {course_id}.")
+            return
+    except Exception as e:
+        print(f"Error fetching assignment details: {e}")
+        return
+
+    # Download the submission file
+    try:
+        file_path = api.download_submission_file(course_id, assignment["submission"]["id"])
+        print(f"Downloaded submission file to {file_path}.")
+    except Exception as e:
+        print(f"Error downloading submission file: {e}")
 
 def push_command(args):
     """Handle the push command to submit assignments"""
-    # If course_id and assignment_id are not provided, try to load from local config
+    # Get args
+    try:
+        missing_args = get_needed_args(args, ["course_id", "assignment_id", "file"], True)
+    except Exception as e:
+        print(f"Error: {e}")
+        return
+    
+    if missing_args:
+        need_argument_output("push", missing_args)
+        return
+    
     course_id = args.course_id
     assignment_id = args.assignment_id
     file_path = args.file
-    
-    # Check if course_id and assignment_id are provided
-    if not course_id or not assignment_id:
-        # If not load from local_config
-        local_config = Config.load_project_config()
 
-        if local_config:
-            if not course_id:
-                course_id = local_config.get("course_id")
-            
-            if not assignment_id:
-                assignment_id = local_config.get("assignment_id")
-
-    # If file is not provided, try to get from local config
-    if not file_path:
-        local_config = Config.load_project_config()
-        if local_config and "default_upload" in local_config:
-            file_path = local_config.get("default_upload")
-
-    # If missing any required arguments, show error and exit
-    if not course_id or not assignment_id or not file_path:
-        missing = []
-        if not course_id:
-            missing.append('course_id')
-        if not assignment_id:
-            missing.append('assignment_id')
-        if not file_path:
-            missing.append('file_path')
-        print(f"Error: Missing {', '.join(missing)}.")
-        print("Please provide all requirements as arguments or set them in the local configuration.")
-        print("Use 'canvas config list' to see the current configuration or 'canvas push -h' for help.")
-        return
-    
     # Ensure the file path is absolute
     file_path = Path(file_path).resolve()
 
@@ -257,21 +269,13 @@ def status_command(args):
     if args.global_view:
         show_global_status(api, args)
         return
-
-    # Determine if we should use TUI to select course/assignment
-    if args.tui:
-        # Run the TUI to select course and assignment
-        course_id, assignment_id, course_name, assignment_name = run_tui(fallback=args.fallback)
-        
-        if not course_id or not assignment_id:
-            print("Status check cancelled.")
-            return
-        
-        # Update args with values from TUI
-        args.course_id = course_id
-        args.assignment_id = assignment_id
     
-    # Get course_id and assignment_id from args or config
+    try:
+        get_needed_args(args, ["course_id", "assignment_id"], True)
+    except Exception as e:
+        print(f"Error: {e}")
+        return
+    
     course_id = args.course_id
     assignment_id = args.assignment_id
     
@@ -313,6 +317,7 @@ def main():
     command_handlers = {
         "config": config_command,
         "init": init_command,
+        "pull": pull_command,
         "push": push_command,
         "status": status_command,
         "help": help_command

@@ -30,6 +30,9 @@ def create_parser() -> argparse.ArgumentParser:
     # Status command
     setup_status_parser(subparsers)
 
+    # Pull command
+    setup_pull_parser(subparsers)
+
     return parser
 
 def setup_config_parser(subparsers: argparse.ArgumentParser) -> None:
@@ -144,6 +147,33 @@ def setup_status_parser(subparsers: argparse.ArgumentParser) -> None:
     subparser = status_parser.add_subparsers(dest="global_view", help="Show grades from all classes")
     global_parser = subparser.add_parser("all", help="Show grades from all classes")
     global_parser.add_argument("-m", "--messages", dest="messages", action="store_true", help="Show messages for global view")
+
+def setup_pull_parser(subparsers):
+    pull_parser = subparsers.add_parser("pull", help="Download assignment details from Canvas")
+    
+    identify_group = pull_parser.add_argument_group("Course and Assignment Identification")
+    identify_group.add_argument( "-cid", "--course_id", dest="course_id", metavar="COURSE_ID", type=int, help="Canvas Course ID (integer)." )
+    identify_group.add_argument( "-aid", "--assignment_id", dest="assignment_id", metavar="ASSIGNMENT_ID", type=int, help="Canvas Assignment ID (integer)." )
+    identify_group.add_argument("-t", "--tui", dest="tui", action="store_true", help="Use interactive Text-based User Interface to select course/assignment.")
+    identify_group.add_argument("--fallback", dest="fallback_tui", action="store_true", help="Fallback to a basic TUI if the full interface is unavailable.")
+
+    output_group = pull_parser.add_argument_group("Output Options")
+    output_group.add_argument("-o", "--output", type=str, default="README.md", help="Filename for assignment output")
+    output_group.add_argument("-od", "--output-dir", type=str, default="./canvas-page", help="Directory for crawled content")
+    output_group.add_argument("-st", "--stdout", action="store_true", help="Output directly to terminal instead of a file")
+    output_group.add_argument("-f", "--force", action="store_true", help="Overwrite existing files")
+
+    format_group = pull_parser.add_argument_group("Formatting Options")
+    format_group.add_argument("--html", action="store_true", help="NI - Preserve HTML format")
+    format_group.add_argument("--convert", action="store_true", help="NI - Convert all crawled content to Markdown (by default only markdown)")
+    format_group.add_argument("--integrate", action="store_true", help="NI - Integrate crawled content into README")
+    format_group.add_argument("--delete-temp", action="store_true", help="NI - Delete temporary files after processing")
+
+    download_group = pull_parser.add_argument_group("Download Options")
+    download_group.add_argument("--pdf", action="store_true", help="NI - Download PDF links")
+    download_group.add_argument("--pages", action="store_true", help="NI - Download linked Canvas pages")
+    download_group.add_argument("--download-all", action="store_true", help="NI - Download all related files (e.g. images, zips)")
+    download_group.add_argument("--convert-links", action="store_true", help="NI - Convert Canvas links to direct download")
 
 def parse_args_and_dispatch(command_handlers: Dict[str, Callable]) -> None:
     """

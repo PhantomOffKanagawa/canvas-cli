@@ -50,9 +50,18 @@ class Config:
             raise ValueError("Invalid scope. Use 'global' or 'local'.")
         
     @staticmethod
-    def get_value(key: str, scope: Literal["global", "local"]) -> str:
-        """Get a configuration value"""
-        if scope == "global":
+    def get_value(key: str, scope: Literal["local", "global"] | list[str]) -> str | None:
+        """
+        Get a configuration value for a given scope or list of scopes.
+        If a list is provided, return the first non-None value found.
+        """
+        if isinstance(scope, list):
+            for s in scope:
+                value = Config.get_value(key, s)
+                if value is not None:
+                    return value
+            return None
+        elif scope == "global":
             config = Config.load_global()
             return config.get(key, None)
         elif scope == "local":
