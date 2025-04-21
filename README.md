@@ -1,10 +1,11 @@
-# 🎓 Canvas CLI
+# 🎓 Canvas CLI (Canvas-CMD on PyPi)
 
 ![Status](https://img.shields.io/badge/Status-Pre--Release-yellow?style=for-the-badge&logo=github)
 ![Tests](https://img.shields.io/github/actions/workflow/status/PhantomOffKanagawa/canvas-cli/run-tests.yml?style=for-the-badge&branch=main&label=Main&logo=pytest)
 ![Tests](https://img.shields.io/github/actions/workflow/status/PhantomOffKanagawa/canvas-cli/run-tests.yml?style=for-the-badge&logo=pytest)
 ![Python](https://img.shields.io/badge/Python-3.6+-blue?style=for-the-badge&logo=python)
 ![License](https://img.shields.io/badge/License-GPLv3-green?style=for-the-badge)
+[![PyPI](https://img.shields.io/pypi/v/canvas-cmd?style=for-the-badge&logo=pypi)](https://pypi.org/project/canvas-cmd/)
 
 > **Automate your Canvas LMS submissions with a git like command-line interface!**
 
@@ -16,6 +17,8 @@ Are you tired of navigating through the Canvas web interface to submit assignmen
 - 🔄 **Initialize projects** with course and assignment information for quick submissions
 - ⚙️ **Configure once, use anywhere** with global and project-specific settings
 - 🚀 **Fast and efficient** workflow for developers and students who live in the terminal
+- 📜 **Open source** and actively maintained
+- 🛠️ **Easy to install** and configure with your Canvas API token install from [PyPi](https://pypi.org/project/canvas-cmd/) with `pip install canvas-cmd`
 
 ## 🚨 Pre-Release Notice
 
@@ -137,8 +140,8 @@ Future improvements and features planned for Canvas CLI:
 - 💬 Add commands for commenting on submissions
 - 🎨 Improve CLI interface and error handling
 - 📜 Add more detailed documentation and examples
-- 🎬 Add a github actions integration to automatically submit on push to main
-- 📦 Package the tool for easy installation via pip or conda
+- 🎬 ~~Add a github actions integration to automatically submit on push to main~~
+- 📦 ~~Package the tool for easy installation via pip or conda~~
 - 🤐 Add support for zipping up multiple folders for submission
 - 📦 Add support for submitting multiple files at once
 - 📃 Add support for pagination
