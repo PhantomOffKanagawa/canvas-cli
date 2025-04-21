@@ -30,6 +30,7 @@ env/
 canvas.json
 .canvascli/
 *.log
+.coverage
 
 # IDE files
 .idea/
@@ -47,3 +48,6 @@ canvas.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Possibly Real API calls
+mock_data/

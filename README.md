@@ -1,6 +1,8 @@
 # 🎓 Canvas CLI
 
 ![Status](https://img.shields.io/badge/Status-Pre--Release-yellow?style=for-the-badge&logo=github)
+![Tests](https://img.shields.io/github/actions/workflow/status/PhantomOffKanagawa/canvas-cli/run-tests.yml?style=for-the-badge&branch=main&label=Main&logo=pytest)
+![Tests](https://img.shields.io/github/actions/workflow/status/PhantomOffKanagawa/canvas-cli/run-tests.yml?style=for-the-badge&logo=pytest)
 ![Python](https://img.shields.io/badge/Python-3.6+-blue?style=for-the-badge&logo=python)
 ![License](https://img.shields.io/badge/License-GPLv3-green?style=for-the-badge)
 
@@ -131,6 +133,7 @@ Future improvements and features planned for Canvas CLI:
 - 📊 Add ability to retrieve versioning of submissions
 - 📅 ~~Implement `git status`-like command to get due dates, grading status, and comments~~
     - 🎓 Get grades via submissions
+    - 🏛️ Show completed vs open assignments
 - 💬 Add commands for commenting on submissions
 - 🎨 Improve CLI interface and error handling
 - 📜 Add more detailed documentation and examples
@@ -139,6 +142,7 @@ Future improvements and features planned for Canvas CLI:
 - 🤐 Add support for zipping up multiple folders for submission
 - 📦 Add support for submitting multiple files at once
 - 📃 Add support for pagination
+- 📂 Add file select support to TUIs
 
 ## 🤝 Contributing
 

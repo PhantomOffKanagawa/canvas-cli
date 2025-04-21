@@ -1,5 +1,5 @@
 """
-Canvas CLI Terminal User Interface module
+Terminal User Interface (TUI) for Canvas CLI
 Provides interactive TUI components for selecting courses and assignments
 """
 

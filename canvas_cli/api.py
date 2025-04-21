@@ -1,5 +1,5 @@
 """
-Canvas API module
+API module for Canvas CLI
 Handles communication with the Canvas REST API
 """
 

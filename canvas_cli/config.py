@@ -1,3 +1,8 @@
+"""
+Configuration Module for Canvas CLI
+Handles loading, saving, and managing configuration settings for the Canvas CLI.
+"""
+
 import json
 from pathlib import Path
 from typing import Literal
@@ -87,8 +92,11 @@ class Config:
         }
     
     @staticmethod
-    def load_project_config(config_dir:Path = Path.cwd()) -> dict:
+    def load_project_config(config_dir:Path = None) -> dict:
         """Load local project configuration"""
+        if config_dir is None:
+            config_dir = Path.cwd()
+
         local_config_path = config_dir / "canvas.json"
         if local_config_path.exists():
             with open(local_config_path, "r") as f:
@@ -97,8 +105,11 @@ class Config:
             return None
     
     @staticmethod
-    def save_project_config(config: dict = {}, config_dir: Path = Path.cwd()) -> None:
+    def save_project_config(config: dict = {}, config_dir: Path = None) -> None:
         """Save local project configuration"""
+        if config_dir is None:
+            config_dir = Path.cwd()
+
         config_dir.mkdir(exist_ok=True)
         
         # Store the file path in the config

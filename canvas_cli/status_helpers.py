@@ -1,5 +1,6 @@
 """
 Helper functions for the Canvas CLI status command
+Handles displaying the global or local status of courses and grades.
 """
 
 import json

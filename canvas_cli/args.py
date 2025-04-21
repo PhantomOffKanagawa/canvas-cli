@@ -20,6 +20,7 @@ def create_parser() -> argparse.ArgumentParser:
     
     # Init command
     setup_init_parser(subparsers)
+    
       # Push command
     setup_push_parser(subparsers)
     
