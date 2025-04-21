@@ -58,9 +58,9 @@ jobs:
     
     # For first publication only, we'll use an API token
     # After the initial release, switch back to trusted publishing
-    permissions:
-      # This permission is mandatory for trusted publishing
-      id-token: write
+    # permissions:
+    # This permission is mandatory for trusted publishing
+    #   id-token: write
       
 
 
