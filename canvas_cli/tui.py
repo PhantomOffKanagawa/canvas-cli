@@ -3,7 +3,6 @@ Terminal User Interface (TUI) for Canvas CLI
 Provides interactive TUI components for selecting courses and assignments
 """
 
-import requests
 from typing import List, Dict, Optional, Tuple, Callable
 from .tui_utils import FuzzySearch, Formatter
 from .api import CanvasAPI
@@ -14,28 +13,27 @@ try:
     CURSES_AVAILABLE = True
 except ImportError:
     CURSES_AVAILABLE = False
-    print("Warning: Curses module not available. Using fallback text interface.")
-    print("For Windows users: Install the 'windows-curses' package with:")
-    print("pip install windows-curses")
+    import importlib.metadata
+    command_name = importlib.metadata.distribution("canvas-cmd").metadata["Name"]
+    print(f"Curses module not available. Using fallback text ui.\nIf on Windows run `pip install {command_name}[windows]` to download windows-curses for tui support.")
 
-# Curses-based TUI implementation
-if CURSES_AVAILABLE:      
+# Import curses module inside the conditional block to avoid unbound references
+if CURSES_AVAILABLE:
+    import curses
+    
     class SelectionList:
         """Interactive list for selecting items in TUI"""
         
-        def __init__(self, items: List[Dict], title: str, 
-                    get_status_func: Callable[[Dict], Dict[str, bool]] = None):
+        def __init__(self, items: List[Dict], title: str):
             """Initialize the selection list
             
             Args:
                 items: List of items to display
                 title: Title of the selection list
-                get_status_func: Optional function to get status flags for an item
             """
             self.items = items
             self.filtered_items = items.copy()
             self.title = title
-            self.get_status_func = get_status_func
             self.selected_idx = 0
             self.offset = 0
             self.search_text = ""
@@ -75,7 +73,7 @@ if CURSES_AVAILABLE:
             self.filtered_items = FuzzySearch.filter_and_sort_items(self.items, self.search_text)
             self.selected_idx = 0
             
-        def render(self, stdscr, y: int, x: int, height: int, width: int, type: str) -> None:
+        def render(self, stdscr, y: int, x: int, height: int, width: int, type: str | None = None, formatter: Callable | None = None) -> None:
             """Render the selection list"""
             # Adjust offset if selected item is out of view
             if self.selected_idx < self.offset:
@@ -109,7 +107,12 @@ if CURSES_AVAILABLE:
                         stdscr.attron(curses.color_pair(Formatter.get_color(item)))
                     
                     selected = self.selected_idx == item_idx
-                    Formatter.write_item(stdscr, y + i + 1, x + 1, width, item, type, selected)
+                    if type == "courses" or type == "assignments":
+                        Formatter.write_item(stdscr, y + i + 1, x + 1, width, item, type, selected)
+                    elif formatter:
+                        stdscr.addstr(y + i + 1, x + 1, formatter(item, type)[:width-2])
+                    else:
+                        stdscr.addstr(y + i + 1, x + 1, str(item)[:width-2])
                     
                     if item_idx == self.selected_idx:
                         stdscr.attroff(curses.A_REVERSE)
@@ -249,6 +252,10 @@ if CURSES_AVAILABLE:
             
             # Course selected, get assignments
             course_id = selected_course.get('id')
+            if course_id is None:
+                show_message(stdscr, "Error: Course ID not found", wait_for_key=True)
+                continue  # Go back to course selection
+            
             show_message(stdscr, f"Loading assignments for {selected_course.get('name')}...", wait_for_key=False)
             assignments = api.get_assignments(course_id)
             
@@ -387,7 +394,11 @@ def text_select_course_and_assignment() -> Tuple[Optional[Dict], Optional[Dict]]
         
     # Get assignments for the selected course
     print(f"\nLoading assignments for {selected_course.get('name')}...")
-    assignments = api.get_assignments(selected_course.get('id'))
+    course_id = selected_course.get('id')
+    if course_id is None:
+        print("Error: Course ID not found")
+        return None, None
+    assignments = api.get_assignments(int(course_id))
     
     if not assignments:
         print("No assignments found for this course.")
@@ -403,6 +414,151 @@ def text_select_course_and_assignment() -> Tuple[Optional[Dict], Optional[Dict]]
     return selected_course, selected_assignment
 
 
+def select_file(start_dir: str | None = None, title: str = "Select a File", fallback=False) -> Optional[str]:
+    """File selector that allows navigating directories and selecting a file
+    
+    Args:
+        start_dir: Directory to start in (defaults to current directory)
+        title: Title to display above the selection list
+        fallback: Whether to force fallback to text-based interface
+        
+    Returns:
+        The selected file path or None if cancelled
+    """
+    import os
+    from pathlib import Path
+    
+    # Start in current directory if not specified
+    current_dir = Path(start_dir).resolve() if start_dir else Path.cwd()
+    selected_path = None
+    
+    while True:
+        # Get directory contents
+        items = [] # List to hold directory entries
+        try:
+            # Create list of parent directory entry
+            if current_dir.parent != current_dir:  # Not at root
+                items.append({
+                    'name': '..',
+                    'path': str(current_dir.parent),
+                    'is_dir': True,
+                    'size': '',
+                    'modified': ''
+                })
+            
+            # Add directories first
+            for entry in sorted(os.scandir(current_dir), key=lambda e: (not e.is_dir(), e.name.lower())):
+                items.append({
+                    'name': entry.name,
+                    'path': str(Path(entry.path)),
+                    'is_dir': entry.is_dir(),
+                    'size': '' if entry.is_dir() else os.path.getsize(entry.path),
+                    'modified': os.path.getmtime(entry.path)
+                })
+        except (PermissionError, FileNotFoundError) as e:
+            print(f"Error accessing directory: {e}")
+            
+        # Define display function
+        def format_file_entry(item, _):
+            prefix = '[d] ' if item.get('is_dir') else '(f) '
+            size = '' if item.get('is_dir') else f" ({item.get('size', 0) / 1024:.1f} KB)"
+            return f"{prefix}{item.get('name')}{size}"
+            
+        # Show current path in title
+        path_title = f"{title} - {current_dir}"
+        
+        # Use select_from_options to display the file list
+        selected = select_from_options(items, 'name', path_title, fallback, formatter=format_file_entry)
+        
+        if selected is None:
+            return None  # User cancelled
+            
+        # If directory, navigate to it. If file, return it.
+        if selected.get('is_dir'):
+            path_str = selected.get('path')
+            if path_str is not None:
+                current_dir = Path(path_str)
+            else:
+                print("Error: Path not found")
+                return None
+        else:
+            return selected.get('path')  # Return the selected file path
+
+def select_from_options(options: List[Dict], label_key: str | None, title: str = "Select an option", fallback=False, formatter=None) -> Optional[Dict]:
+    """Present a list of options to the user and return the selected one
+    
+    Args:
+        options: List of dictionary objects to select from
+        label_key: Key to use for displaying each option
+        title: Title to display above the selection list
+        fallback: Whether to force fallback to text-based interface
+        formatter: Custom formatter function for displaying items
+        
+    Returns:
+        The selected dictionary object or None if cancelled
+    """
+    # Handle empty options list
+    if not options:
+        print("No options available.")
+        return None
+        
+    # Define display function for the options
+    if formatter is None:
+        def display_option(item, _):
+            return f"{item.get(label_key, 'No label')}"
+        formatter = display_option
+        
+    # Use appropriate interface based on curses availability
+    try:
+        if CURSES_AVAILABLE and not fallback:
+            # Use curses-based selection
+            def select_with_curses(stdscr) -> Optional[Dict]:
+                # Set up curses
+                curses.curs_set(0)  # type: ignore # Hide cursor
+                stdscr.clear()
+                
+                # Get terminal dimensions
+                height, width = stdscr.getmaxyx()
+                
+                # Set up selection list
+                option_list = SelectionList(
+                    items=options,
+                    title=title,
+                )
+                
+                # Selection loop
+                while True:
+                    stdscr.clear()
+                    
+                    # Show help text
+                    help_text = "↑/↓: Navigate | Enter: Select | Type to search | Esc: Cancel"
+                    stdscr.addstr(height - 1, 0, help_text[:width-1])
+                    
+                    # Render option list
+                    option_list.render(stdscr, 0, 0, height - 2, width, formatter=formatter)
+                    
+                    # Refresh screen
+                    stdscr.refresh()
+                    
+                    # Get user input
+                    key = stdscr.getch()
+                    
+                    # Handle key
+                    if key == 27:  # Escape key - cancel
+                        return None
+                    
+                    result = option_list.handle_key(key)
+                    if result:
+                        return result
+            
+            return curses.wrapper(select_with_curses) # type: ignore
+        else:
+            # Use text-based selection
+            return select_from_list(options, formatter, title)
+    except Exception as e:
+        print(f"Error during selection: {e}")
+        return None
+
 def run_tui(fallback=False) -> Tuple[Optional[int], Optional[int], Optional[str], Optional[str]]:
     """Run the TUI to select a course and assignment
     
@@ -415,7 +571,7 @@ def run_tui(fallback=False) -> Tuple[Optional[int], Optional[int], Optional[str]
     try:
         # Use appropriate interface based on curses availability
         if CURSES_AVAILABLE and not fallback:
-            course, assignment = curses.wrapper(select_course_and_assignment)
+            course, assignment = curses.wrapper(select_course_and_assignment) # type: ignore
         else:
             course, assignment = text_select_course_and_assignment()
             

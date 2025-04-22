@@ -8,6 +8,9 @@ from datetime import datetime
 try:
     import curses
 except ImportError:
+    import importlib.metadata
+    command_name = importlib.metadata.name("canvas-cmd")
+    print(f"Curses module not available. This may be due to running in an environment that does not support curses.\nIf on Windows run `pip install {command_name}[windows]` to download windows-curses for tui support.")
     curses = None
 
 
@@ -26,7 +29,7 @@ class FuzzySearch:
             Score of the match (higher is better match), 0 if no match
         """
         # Extract searchable text from the item
-        name = item.get('name', '').lower()
+        name = item.get('name', '').lower() or item.get('meta_label', '').lower() or item.get('meta_data', '').lower()
         code = item.get('course_code', '').lower() if 'course_code' in item else ''
         desc = item.get('description', '').lower() if 'description' in item else ''
         

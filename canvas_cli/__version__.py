@@ -8,6 +8,7 @@ __version__ = "unknown"
 try:
     import importlib.metadata
     __version__ = importlib.metadata.version("canvas-cmd")
-except (ImportError, importlib.metadata.PackageNotFoundError):
-    # If not installed or using older Python, keep default version
+    
+except ImportError:
+    # If using older Python, keep default version
     pass

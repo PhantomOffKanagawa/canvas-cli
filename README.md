@@ -14,8 +14,12 @@ Are you tired of navigating through the Canvas web interface to submit assignmen
 ## ✨ Features
 
 - 📤 **Submit assignments** directly from your terminal
-- 🔄 **Initialize projects** with course and assignment information for quick submissions
+- 🔄 **Initialize projects** with default assignment and file info for quick upload
+- 🔽 **Pull descriptions** formatted to markdown
+- 📜 **View assignment details** and course information
+- 📂 **Download submissions** to quickly get previously submitted work
 - ⚙️ **Configure once, use anywhere** with global and project-specific settings
+- 🔗 **Based on git and npm** paradigms for a quick learning curve with `config`, `init`, `push`, `pull`, `status`, and `clone`
 - 🚀 **Fast and efficient** workflow for developers and students who live in the terminal
 - 📜 **Open source** and actively maintained
 - 🛠️ **Easy to install** and configure with your Canvas API token install from [PyPi](https://pypi.org/project/canvas-cmd/) with `pip install canvas-cmd`
@@ -24,11 +28,13 @@ Are you tired of navigating through the Canvas web interface to submit assignmen
 
 This project is currently in pre-release status. Most features are working, but you might encounter some rough edges or features marked as "Not Implemented" (NI).
 
+Please, please, PLEASE [report any bugs or issues you encounter](https://github.com/PhantomOffKanagawa/canvas-cli/issues). Your feedback is invaluable in making this tool better!
+
 ## 🛠️ Installation
 
 ```bash
 # Clone this repository
-git clone https://github.com/yourusername/canvas-cli.git
+git clone https://github.com/PhantomOffKanagawa/canvas-cli.git
 cd canvas-cli
 
 # Install in development mode
@@ -129,25 +135,29 @@ This project is open source and available under the GPL v3 License.
 
 ## 📋 Roadmap & TODOs
 
+### Next Step Refactor with `cleo` for better testing and cleaner code
+
 Future improvements and features planned for Canvas CLI:
 
+- 🎨 Improve CLI interface and error handling
 - 🔄 Consider git remote paradigm over npm package.json for `canvas init`
-- ⬇️ Add `canvas pull` to download current submissions and assignment descriptions
+- 💬 ~~Add `canvas pull` to download current submissions~~
+- ⬇️ ~~Add `canvas clone` to get assignment descriptions~~
 - ⚙️ Implement cascading config scope like git
 - 🔍 ~~Build a TUI for getting course ID and assignment ID from name~~
-- 📊 Add ability to retrieve versioning of submissions
+- 📊 ~~Add ability to retrieve versioning of submissions~~
 - 📅 ~~Implement `git status`-like command to get due dates, grading status, and comments~~
     - 🎓 Get grades via submissions
     - 🏛️ Show completed vs open assignments
 - 💬 Add commands for commenting on submissions
-- 🎨 Improve CLI interface and error handling
-- 📜 Add more detailed documentation and examples
+- 📜 ~~Add more detailed documentation and examples~~
 - 🎬 ~~Add a github actions integration to automatically submit on push to main~~
 - 📦 ~~Package the tool for easy installation via pip or conda~~
 - 🤐 Add support for zipping up multiple folders for submission
 - 📦 Add support for submitting multiple files at once
 - 📃 Add support for pagination
-- 📂 Add file select support to TUIs
+- 📂 ~~Add file select support to TUIs~~
+- 🪙 Add real caching between calls rather than just in place
 
 ## 🤝 Contributing
 

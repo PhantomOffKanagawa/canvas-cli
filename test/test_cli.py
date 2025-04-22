@@ -2,15 +2,14 @@
 Tests for the CLI module
 """
 
-import sys
 import io
-import json
 import tempfile
+import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock, call
 
 from test_base import CanvasCliTestCase
-from canvas_cli.cli import config_command, init_command, push_command, status_command, help_command, main
+from canvas_cli.cli import config_command, init_command, pull_command, push_command, status_command, help_command, main
 
 class CLITests(CanvasCliTestCase):
     """
@@ -129,10 +128,10 @@ class CLITests(CanvasCliTestCase):
         self.assertEqual(config["course_id"], "67890")
         self.assertEqual(config["default_upload"], "test_file.py")
     
-    @patch('canvas_cli.cli.CanvasAPI')
+    @patch('canvas_cli.cli.submit_assignment')  # Patch directly where it's imported in cli.py
     @patch('canvas_cli.cli.Config')
     @patch('pathlib.Path.resolve')
-    def test_push_command(self, mock_resolve, mock_config, mock_api_class):
+    def test_push_command(self, mock_resolve, mock_config, mock_submit_assignment):
         """Test the push command"""
         # Set up args
         self.args.course_id = 12345
@@ -141,7 +140,6 @@ class CLITests(CanvasCliTestCase):
         
         # Set up mocks
         mock_resolve.return_value = Path(self.temp_dir) / "test_file.py"
-        mock_api = mock_api_class.return_value
         
         # Create a test file
         test_file = Path(self.temp_dir) / "test_file.py"
@@ -149,91 +147,11 @@ class CLITests(CanvasCliTestCase):
             f.write("print('Hello, world!')")
         
         # Call the function
-        with patch('builtins.open', create=True) as mock_open:
-            push_command(self.args)
+        push_command(self.args)
         
         # Verify correct API call
-        mock_api.submit_assignment.assert_called_with(12345, 67890, mock_resolve.return_value)
-    
-    # @patch('canvas_cli.cli.CanvasAPI')
-    # def test_pull_command_basic(self, mock_api_class):
-    #     """Test the pull command with basic arguments"""
-    #     # Set up args
-    #     self.args.course_id = 12345
-    #     self.args.assignment_id = 67890
-    #     self.args.tui = False
-    #     self.args.output = "README.md"
-    #     self.args.output_directory = "./canvas-page"
-    #     self.args.force = True
-    #     self.args.html = False
-    #     self.args.pdf = False
-    #     self.args.pages = False
-    #     self.args.convert = False
-    #     self.args.integrated = False
-    #     self.args.delete_after = False
-    #     self.args.convert_links = False
-    #     self.args.download_all = False
+        mock_submit_assignment.assert_called_with(12345, 67890, mock_resolve.return_value)
         
-    #     # Set up mocks
-    #     mock_api = mock_api_class.return_value
-    #     mock_api.get_assignment_details.return_value = self.mock_assignment_details
-    #     mock_api.get_course_details.return_value = self.mock_course_details
-        
-    #     # Mock Path.exists and open
-    #     with patch('pathlib.Path.exists', return_value=False), \
-    #          patch('builtins.open', create=True), \
-    #          patch('canvas_cli.cli.markdownify', return_value="Converted Markdown"):
-            
-    #         # Call the function
-    #         pull_command(self.args)
-        
-    #     # Verify API calls
-    #     mock_api.get_assignment_details.assert_called_with(12345, 67890)
-    #     mock_api.get_course_details.assert_called_with(12345)
-    
-    # @patch('canvas_cli.cli.CanvasAPI')
-    # def test_pull_command_with_convert_links(self, mock_api_class):
-    #     """Test the pull command with convert_links option"""
-    #     # Set up args
-    #     self.args.course_id = 12345
-    #     self.args.assignment_id = 67890
-    #     self.args.tui = False
-    #     self.args.output = "README.md"
-    #     self.args.output_directory = "./canvas-page"
-    #     self.args.force = True
-    #     self.args.html = False
-    #     self.args.pdf = False
-    #     self.args.pages = False
-    #     self.args.convert = False
-    #     self.args.integrated = False
-    #     self.args.delete_after = False
-    #     self.args.convert_links = True
-    #     self.args.download_all = False
-        
-    #     # Set up mocks
-    #     mock_api = mock_api_class.return_value
-    #     assignment_with_links = self.mock_assignment_details.copy()
-    #     assignment_with_links["description"] = """<p>Assignment with links:</p>
-    #     <a href="https://mockcanvas.edu/courses/12345/files/99999?verifier=abcdef&amp;wrap=1">Download file</a>"""
-        
-    #     mock_api.get_assignment_details.return_value = assignment_with_links
-    #     mock_api.get_course_details.return_value = self.mock_course_details
-        
-    #     # Mock necessary functions and modules
-    #     with patch('pathlib.Path.exists', return_value=False), \
-    #          patch('builtins.open', create=True), \
-    #          patch('canvas_cli.cli.markdownify', return_value="Converted Markdown"), \
-    #          patch('canvas_cli.cli.Config.get_value', return_value="mockcanvas.edu"), \
-    #          patch('re.findall', return_value=[("https://mockcanvas.edu/courses/12345/files/99999?verifier=abcdef&amp;wrap=1", "Download file")]), \
-    #          patch('re.match', return_value=MagicMock(groups=lambda: ["https://mockcanvas.edu/courses/12345/files/99999", "abcdef"])), \
-    #          patch('re.search', return_value=MagicMock(group=lambda: '<a href="https://mockcanvas.edu/courses/12345/files/99999?verifier=abcdef&amp;wrap=1">Download file</a>')):
-             
-    #         # Call the function
-    #         pull_command(self.args)
-        
-    #     # Check that output contains indication of conversion
-    #     output = self.mock_stdout.getvalue()
-    #     self.assertIn("Converting Canvas file links", output)
     
     @patch('canvas_cli.cli.CanvasAPI')
     def test_status_command(self, mock_api_class):
@@ -279,7 +197,181 @@ class CLITests(CanvasCliTestCase):
         self.assertIn("init", output)
         self.assertIn("push", output)
         self.assertIn("status", output)
-    
+        
+    @patch('canvas_cli.cli.select_from_options')
+    @patch('canvas_cli.cli.download_file')
+    @patch('canvas_cli.cli.CanvasAPI')
+    @patch('canvas_cli.cli.Path')
+    def test_pull_command_latest_download(self, mock_path, mock_api_class, mock_download_file, mock_select_from_options):
+        # Setup args
+        args = MagicMock()
+        args.course_id = 123
+        args.assignment_id = 456
+        args.download_latest = True
+        args.output_directory = "output"
+        args.overwrite_file = True
+
+        # Setup mocks
+        mock_api = mock_api_class.return_value
+        attachments = [
+            {"url": "http://file.url/1", "filename": "file1.txt", "display_name": "file1.txt"},
+            {"url": "http://file.url/2", "filename": "file2.txt", "display_name": "file2.txt"}
+        ]
+        submission = {"attachments": attachments}
+        submissions_resp = {
+            "submission_history": [submission],
+            "assignment": {"points_possible": "100"}
+        }
+        mock_api.get_submissions.return_value = submissions_resp
+        mock_path.cwd.return_value.joinpath.return_value.resolve.return_value = "/abs/output"
+
+        # Call function
+        pull_command(args)
+
+        # Assert download_file called for each attachment
+        expected_calls = [
+            ((a["url"], os.path.join("/abs/output", a["filename"])),)
+            for a in attachments
+        ]
+        # Compare only the first two arguments of each call
+        actual_calls = [tuple(call.args[:2]) for call in mock_download_file.call_args_list]
+        for expected, actual in zip(expected_calls, actual_calls):
+            # expected is a tuple of one tuple, so flatten
+            assert expected[0] == actual
+
+    @patch('canvas_cli.cli.select_from_options')
+    @patch('canvas_cli.cli.download_file')
+    @patch('canvas_cli.cli.CanvasAPI')
+    @patch('canvas_cli.cli.Path')
+    def test_pull_command_select_submission(self, mock_path, mock_api_class, mock_download_file, mock_select_from_options):
+        # Setup args
+        args = MagicMock()
+        args.course_id = 123
+        args.assignment_id = 456
+        args.download_latest = False
+        args.output_directory = "output"
+        args.overwrite_file = False
+
+        # Setup mocks
+        mock_api = mock_api_class.return_value
+        attachments1 = [{"url": "http://file.url/1", "filename": "file1.txt", "display_name": "file1.txt"}]
+        attachments2 = [{"url": "http://file.url/2", "filename": "file2.txt", "display_name": "file2.txt"}]
+        submission1 = {"attachments": attachments1, "submitted_at": "2024-01-01T00:00:00Z", "submission_type": "online_upload", "score": "90"}
+        submission2 = {"attachments": attachments2, "submitted_at": "2024-01-02T00:00:00Z", "submission_type": "online_upload", "score": "100"}
+        submissions_resp = {
+            "submission_history": [submission1, submission2],
+            "assignment": {"points_possible": "100"}
+        }
+        mock_api.get_submissions.return_value = submissions_resp
+        mock_path.cwd.return_value.joinpath.return_value.resolve.return_value = "/abs/output"
+        mock_select_from_options.return_value = submission2
+
+        # Call function
+        pull_command(args)
+
+        # Assert download_file called for the selected submission's attachment
+        mock_download_file.assert_called_once_with(
+            "http://file.url/2", os.path.join("/abs/output", "file2.txt"), overwrite=False
+        )
+
+    @patch('canvas_cli.cli.CanvasAPI')
+    def test_pull_command_no_submissions(self, mock_api_class):
+        args = MagicMock()
+        args.course_id = 123
+        args.assignment_id = 456
+        args.download_latest = True
+        args.output_directory = "output"
+        args.overwrite_file = True
+
+        mock_api = mock_api_class.return_value
+        mock_api.get_submissions.return_value = None
+
+        pull_command(args)
+        output = self.mock_stdout.getvalue()
+        self.assertIn("No submissions found for assignment", output)
+        
+    @patch('canvas_cli.cli.CanvasAPI')
+    def test_pull_command_missing_args(self, mock_api_class):
+            args = MagicMock()
+            args.course_id = None
+            args.assignment_id = None
+            args.download_latest = True
+            args.output_directory = "output"
+            args.overwrite_file = True
+
+            # Ensure get_submissions returns None, not a MagicMock
+            mock_api_class.return_value.get_submissions.return_value = None
+
+            # Patch Path.cwd to a temp directory to avoid accessing the real cwd
+            with patch('pathlib.Path.cwd', return_value=Path(self.temp_dir)):
+                pull_command(args)
+            output = self.mock_stdout.getvalue()
+            self.assertIn("Please provide all requirements", output)
+
+    @patch('canvas_cli.cli.CanvasAPI')
+    def test_pull_command_api_error(self, mock_api_class):
+        args = MagicMock()
+        args.course_id = 123
+        args.assignment_id = 456
+        args.download_latest = True
+        args.output_directory = "output"
+        args.overwrite_file = True
+
+        mock_api_class.side_effect = ValueError("API error")
+
+        pull_command(args)
+        output = self.mock_stdout.getvalue()
+        self.assertIn("Error: API error", output)
+
+    @patch('canvas_cli.cli.CanvasAPI')
+    def test_pull_command_empty_submission_history(self, mock_api_class):
+        """Test pull command when submission history is empty"""
+        args = MagicMock()
+        args.course_id = 123
+        args.assignment_id = 456
+        args.download_latest = True
+        args.output_directory = "output"
+        args.overwrite_file = True
+
+        mock_api = mock_api_class.return_value
+        mock_api.get_submissions.return_value = {"submission_history": []}
+
+        pull_command(args)
+        output = self.mock_stdout.getvalue()
+        self.assertIn("No submissions found for assignment", output)
+
+    @patch('canvas_cli.cli.select_from_options')
+    @patch('canvas_cli.cli.download_file')
+    @patch('canvas_cli.cli.CanvasAPI')
+    @patch('canvas_cli.cli.Path')
+    def test_pull_command_single_submission(self, mock_path, mock_api_class, mock_download_file, mock_select_from_options):
+        """Test pull command with a single submission (no selection needed)"""
+        args = MagicMock()
+        args.course_id = 123
+        args.assignment_id = 456
+        args.download_latest = False  # Even with this False, it should download the only submission
+        args.output_directory = "output"
+        args.overwrite_file = True
+
+        mock_api = mock_api_class.return_value
+        attachments = [{"url": "http://file.url/1", "filename": "file1.txt", "display_name": "File 1"}]
+        submission = {"attachments": attachments}
+        submissions_resp = {
+            "submission_history": [submission],
+            "assignment": {"points_possible": "100"}
+        }
+        mock_api.get_submissions.return_value = submissions_resp
+        mock_path.cwd.return_value.joinpath.return_value.resolve.return_value = Path("/abs/output")
+
+        pull_command(args)
+
+        # Verify no selection was made since there's only one submission
+        mock_select_from_options.assert_not_called()
+        # Verify file was downloaded
+        mock_download_file.assert_called_with(
+            "http://file.url/1", os.path.join("/abs/output", "file1.txt"), overwrite=True
+        )
+        
 if __name__ == "__main__":
     import unittest
     unittest.main()

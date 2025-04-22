@@ -31,8 +31,29 @@ class CanvasAPI:
         self.cache = {}  # Cache for storing API responses
         self.cache_expiry = 60 * 5  # Cache expiry time in seconds (5 minutes)
         self.cache_time = {}  # Cache time for each endpoint
+        
+    def get_canvas_page(self, url: str, params: dict | None = None) -> Optional[Dict]:
+        """Get a page from the Canvas API
+        
+        Args:
+            url: The URL to fetch
+            params: Additional parameters for the request
+        
+        Returns:
+            JSON response as a dictionary or None on error
+        """
+        if params is None:
+            params = {}
+        
+        try:
+            response = requests.get(url, headers=self.headers, params=params)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            print(f"Error fetching page: {e}")
+            return None
     
-    def get_courses(self, params: dict = None) -> List[Dict]:
+    def get_courses(self, params: dict | None = None) -> List[Dict]:
         """Get list of courses from Canvas API
         
         Returns:
@@ -71,7 +92,7 @@ class CanvasAPI:
             print(f"Error fetching courses: {e}")
             return []
     
-    def get_assignments(self, course_id: int, params: dict = None) -> List[Dict]:
+    def get_assignments(self, course_id: int, params: dict | None = None) -> List[Dict]:
         """Get list of assignments for a course from Canvas API
         
         Args:
@@ -144,7 +165,7 @@ class CanvasAPI:
             print(f"Error fetching assignments: {e}")
             return []
     
-    def get_course_details(self, course_id: int, props: dict = None) -> Dict:
+    def get_course_details(self, course_id: int, props: dict | None = None) -> Dict:
         """Get detailed information about a course
         
         Args:
@@ -159,6 +180,7 @@ class CanvasAPI:
         if cache_key in self.cache and (datetime.now() - self.cache_time.get(cache_key, datetime.min)).total_seconds() < self.cache_expiry:
             return self.cache[cache_key]
 
+        # Default params
         if props is None:
             props = {}
 
@@ -177,7 +199,7 @@ class CanvasAPI:
             print(f"Error fetching course details: {e}")
             return {}
     
-    def get_assignment_details(self, course_id: int, assignment_id: int) -> Dict:
+    def get_assignment_details(self, course_id: int, assignment_id: int, props: dict | None = None) -> Dict:
         """Get detailed information about an assignment
         
         Args:
@@ -192,9 +214,15 @@ class CanvasAPI:
         if cache_key in self.cache and (datetime.now() - self.cache_time.get(cache_key, datetime.min)).total_seconds() < self.cache_expiry:
             return self.cache[cache_key]
 
+        # Default params
+        if props is None:
+            props = {
+                'include[]': ['submission', 'score_statistics', 'can_edit'],
+            }
+
         try:
             url = f"{self.base_url}/courses/{course_id}/assignments/{assignment_id}"
-            response = requests.get(url, headers=self.headers)
+            response = requests.get(url, headers=self.headers, params=props)
             response.raise_for_status()
             assignment_details = response.json()
             
@@ -207,7 +235,7 @@ class CanvasAPI:
             print(f"Error fetching assignment details: {e}")
             return {}
     
-    def get_submissions(self, course_id: int, assignment_id: int) -> Dict:
+    def get_submissions(self, course_id: int, assignment_id: int, props: dict | None = None) -> Dict:
         """Get the current user's submission for an assignment
         
         Args:
@@ -222,9 +250,16 @@ class CanvasAPI:
         if cache_key in self.cache and (datetime.now() - self.cache_time.get(cache_key, datetime.min)).total_seconds() < self.cache_expiry:
             return self.cache[cache_key]
 
+        # Default params
+        if props is None:
+            props = {
+                'include[]': ['submission_history', 'submission_comments', 'submission_html_comments', 'rubric_assessment',
+                              'assignment', 'visibility', 'course', 'user', 'group', 'read_status', 'student_entered_score'],
+            }
+            
         try:
             url = f"{self.base_url}/courses/{course_id}/assignments/{assignment_id}/submissions/self"
-            response = requests.get(url, headers=self.headers)
+            response = requests.get(url, headers=self.headers, params=props)
             response.raise_for_status()
             submission_data = response.json()
             
@@ -237,71 +272,72 @@ class CanvasAPI:
             print(f"Error fetching submission: {e}")
             return {}
     
-    def submit_assignment(course_id, assignment_id, file_path):
-        """Submit assignment file to Canvas"""
-        config = Config.load_global()
+    
+def submit_assignment(course_id, assignment_id, file_path):
+    """Submit assignment file to Canvas"""
+    config = Config.load_global()
 
-        # Check if global configuration is set
-        if not config:
-            print("Error: Global configuration not found.")
-            print("Please run 'canvas config set --global token <token>' and 'canvas config set --global host <host>' to set them.")
-            return
+    # Check if global configuration is set
+    if not config:
+        print("Error: Global configuration not found.")
+        print("Please run 'canvas config set --global token <token>' and 'canvas config set --global host <host>' to set them.")
+        return
 
-        # Check if token and host are set in the configuration
-        if not config.get("token") or not config.get("host"):
-            print("Error: Missing token or host in configuration.")
-            print("Please run 'canvas config set --global token <token>' and 'canvas config set --global host <host>' to set them.")
-            return
+    # Check if token and host are set in the configuration
+    if not config.get("token") or not config.get("host"):
+        print("Error: Missing token or host in configuration.")
+        print("Please run 'canvas config set --global token <token>' and 'canvas config set --global host <host>' to set them.")
+        return
 
-        base_url = f"https://{config['host']}/api/v1"
+    base_url = f"https://{config['host']}/api/v1"
 
-        # Follow Canvas LMS API Flow (https://developerdocs.instructure.com/services/canvas/basics/file.file_uploads)
-        # Step 1: Telling canvas about the file upload and getting a token
-        file_name = os.path.basename(file_path)
-        size = os.path.getsize(file_path)
-        upload_params = {
-            "name": file_name,
-            "size": size,
-            "content_type": "application/octet-stream", # May need to be dependent for limited submissions
-            "on_duplicate": "overwrite"
+    # Follow Canvas LMS API Flow (https://developerdocs.instructure.com/services/canvas/basics/file.file_uploads)
+    # Step 1: Telling canvas about the file upload and getting a token
+    file_name = os.path.basename(file_path)
+    size = os.path.getsize(file_path)
+    upload_params = {
+        "name": file_name,
+        "size": size,
+        "content_type": "application/octet-stream", # May need to be dependent for limited submissions
+        "on_duplicate": "overwrite"
+    }
+
+    print("Step 1/3: Requesting upload session...", end=' ')
+
+    # POST to relevent API endpoint
+    # With the name, size in bytes, content type,
+    session_url = f"{base_url}/courses/{course_id}/assignments/{assignment_id}/submissions/self/files"
+    session_res = requests.post(session_url, headers=Config.get_headers(), json=upload_params)
+    session_res.raise_for_status()
+    upload_data = session_res.json()
+
+    # Step 2: Upload file data to the URL given in the previous response
+    print("Step 2/3: Uploading file...", end=' ')
+
+    # The upload URL and parameters are in the response
+    # The upload URL is a temporary URL for the file upload
+    upload_url = upload_data['upload_url']
+    # Upload following the parameters given in the response
+    with open(file_path, 'rb') as f:
+        upload_response = requests.post(upload_url, data=upload_data['upload_params'], files={'file': f})
+    upload_response.raise_for_status()
+    file_id = upload_response.json()['id']
+
+    # Step 3: Submit the assignment
+    print("Step 3/3: Submitting assignment...", end=' ')
+
+    # The file ID is used to submit the assignment
+    # The submission URL is the same as the one used to get the upload session
+    submit_url = f"{base_url}/courses/{course_id}/assignments/{assignment_id}/submissions"
+    payload = {
+        "submission": {
+            "submission_type": "online_upload",
+            "file_ids": [file_id]
         }
-
-        print("Step 1/3: Requesting upload session...", end=' ')
-
-        # POST to relevent API endpoint
-        # With the name, size in bytes, content type,
-        session_url = f"{base_url}/courses/{course_id}/assignments/{assignment_id}/submissions/self/files"
-        session_res = requests.post(session_url, headers=Config.get_headers(), json=upload_params)
-        session_res.raise_for_status()
-        upload_data = session_res.json()
-
-        # Step 2: Upload file data to the URL given in the previous response
-        print("Step 2/3: Uploading file...", end=' ')
-
-        # The upload URL and parameters are in the response
-        # The upload URL is a temporary URL for the file upload
-        upload_url = upload_data['upload_url']
-        # Upload following the parameters given in the response
-        with open(file_path, 'rb') as f:
-            upload_response = requests.post(upload_url, data=upload_data['upload_params'], files={'file': f})
-        upload_response.raise_for_status()
-        file_id = upload_response.json()['id']
-
-        # Step 3: Submit the assignment
-        print("Step 3/3: Submitting assignment...", end=' ')
-
-        # The file ID is used to submit the assignment
-        # The submission URL is the same as the one used to get the upload session
-        submit_url = f"{base_url}/courses/{course_id}/assignments/{assignment_id}/submissions"
-        payload = {
-            "submission": {
-                "submission_type": "online_upload",
-                "file_ids": [file_id]
-            }
-        }
-        submit_res = requests.post(submit_url, headers=Config.get_headers(), json=payload)
-        submit_res.raise_for_status()
-        print("Assignment submitted successfully.")
+    }
+    submit_res = requests.post(submit_url, headers=Config.get_headers(), json=payload)
+    submit_res.raise_for_status()
+    print("Assignment submitted successfully.")
 
 # Helper functions for formatting API data
 def format_date(date_str):
@@ -320,3 +356,29 @@ def format_date(date_str):
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     except:
         return date_str
+
+def download_file(url: str, file_path: str, overwrite: bool = False) -> None | requests.Response:
+    """Download a file from a URL
+
+    Args:
+        url: URL of the file to download
+        file_path: Path to save the downloaded file
+        overwrite: Flag to indicate whether to overwrite the file if it exists
+
+    Returns:
+        None
+    """
+    if not overwrite and os.path.exists(file_path):
+        print(f"File {file_path} already exists. Overwrite? (y/N): ", end='')
+        
+        response = input().strip().lower()
+        if response not in ['y', 'yes']:
+            return
+
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    with open(file_path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+            
+    return response

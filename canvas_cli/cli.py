@@ -7,23 +7,24 @@ import json
 from pathlib import Path
 import sys
 import os
-import pydoc
+import re
+
+from canvas_cli.cli_utils import get_needed_args, need_argument_output
 from .__version__ import __version__
 
 from .config import Config
-from .api import CanvasAPI, format_date
+from .api import CanvasAPI, download_file, format_date, submit_assignment
 from .args import parse_args_and_dispatch
-from .tui import run_tui
-from .status_helpers import show_global_status, show_local_status
+from .tui import run_tui, select_file, select_from_options
+from .command_status import show_global_status, show_local_status
+from .command_clone import handle_clone_command, validate_clone_args
 
 def config_command(args):
     """Handle command line arguments for configuration"""
-    if args is None:
-        args = type('Args', (), {})()
-
+        
     # Check if there is no subcommand
     if args.config_command == None:
-        print("error: no action specified")
+        print("Error: no action specified")
         print("See 'canvas config --help' for available actions")
         return
     
@@ -41,14 +42,14 @@ def config_command(args):
                     print("No global configuration found.")
                     return
                 for key, value in config.items():
-                    print(f"{key}{'' if args.name_only else ': ' + value}")
+                    print(f"{key}{'' if args.name_only else ': ' + str((value))}")
             elif args.scope == "local":
                 config = Config.load_project_config()
                 if config is None:
                     print("No local configuration found.")
                     return
                 for key, value in config.items():
-                    print(f"{key}{'' if args.name_only else ': ' + value}")
+                    print(f"{key}{'' if args.name_only else ': ' + str((value))}")
         except Exception as e:
             print(f"Error: {e}")
         return
@@ -85,24 +86,19 @@ def init_command(args):
     """Handle the init command to create a local .canvas-cli directory"""
     """Inspired by npm init"""
 
-    # Check if user requested the TUI interface
-    if args.tui:
-        # Run the TUI to select course and assignment
-        course_id, assignment_id, course_name, assignment_name = run_tui(args.fallback)
-        
-        # Check if course_id and assignment_id are provided
-        # If not, exit the function
-        if not course_id or not assignment_id:
-            return
-        
-        # Update args with values from TUI
-        args.course_id = course_id
-        args.assignment_id = assignment_id
-        args.course_name = course_name
-        args.assignment_name = assignment_name
-        
-        print(f"Selected: {course_name} (ID: {course_id})")
-        print(f"Assignment: {assignment_name} (ID: {assignment_id})")
+    try:
+        missing_args = get_needed_args(args, ["course_id", "assignment_id", "course_name", "assignment_name", "file"], True)
+    except Exception as e:
+        print(f"Error: {e}")
+        return
+    
+    # If file set and can be relative, make it relative to the current directory
+    if 'file' in args and args.file is not None:
+        file_path = Path(args.file).resolve()
+        try:
+            args.file = os.path.join('./', file_path.relative_to(Path.cwd()))
+        except ValueError:
+            args.file = file_path
         
     # Check if the current directory is a valid project directory
     # If so, use existing values as defaults
@@ -110,7 +106,6 @@ def init_command(args):
         old_config = Config.load_project_config()
     except Exception as e:
         print(f"Error loading local configuration: {e}")
-        old_config = {}
         return
 
     message = """This utility will walk you through creating a canvas.json file.
@@ -127,7 +122,7 @@ Press ^C at any time to quit."""
     print(message)
 
     # Make config
-    config = old_config
+    config = old_config.copy() if old_config else {}
 
     # Helper function to prompt for a value and set it in the config
     # with a default value of the old config if it exists
@@ -176,46 +171,119 @@ Press ^C at any time to quit."""
         return
     
     print()
+    
+def pull_command(args):
+    """Handle the pull command to download submissions"""
+    # Try to get the course_id and assignment_id from the config
+    try:
+        missing_args = get_needed_args(args, ["course_id", "assignment_id"], True)
+    except Exception as e:
+        print(f"Error: {e}")
+        return
+    
+    if missing_args:
+        need_argument_output("pull", missing_args)
+        return
+    
+    # Determine Course and Assignment IDs
+    course_id = args.course_id
+    assignment_id = args.assignment_id
+    
+    # Determine what we need to clone using download-group
+    download_latest: bool = args.download_latest
+    
+    # Determine how output will be handled using output-group
+    output_directory: str = str(Path.cwd().joinpath(Path(args.output_directory)).resolve())
+    overwrite: bool = args.overwrite_file
+    tui = args.tui
+    tui_for_download = args.download_tui
+    fallback_tui = args.fallback_tui
+    
+    # Get API client
+    try:
+        api = CanvasAPI()
+    except ValueError as e:
+        print(f"Error: {e}")
+        return
+    
+    # Get the submissions response json
+    submissions_resp = api.get_submissions(course_id, assignment_id)
+    if not submissions_resp:
+        print(f"No submissions found for assignment {assignment_id} in course {course_id}.")
+        return
+    
+    # Get the submissions from the response
+    submissions = submissions_resp.get("submission_history", None)
+    
+    # If there are no submissions, show an error message
+    if not submissions or len(submissions) == 0:
+        print(f"No submissions found for assignment {assignment_id} in course {course_id}.")
+        return
+    # If there is only one submission or the user wants to download the latest, download it
+    elif len(submissions) == 1 or download_latest:
+        # Get the latest submission
+        print(f"Found {len(submissions)} submission for assignment {assignment_id} in course {course_id}.")
+        
+        # Get attachments from the latest submission
+        attachments = submissions[len(submissions) - 1].get("attachments", None)
+        
+        # Download the attachments if they exist
+        for attach in attachments:
+            download_file(attach.get("url", None), os.path.join(output_directory, attach.get("filename", None)), overwrite=overwrite)
+        print(f"Downloaded {len(attachments)} attachments from the latest submission to {output_directory}.")
+        return
+            
+    else:
+        # If there are multiple submissions, show a list to the user and let them select one
+        print(f"Found {len(submissions)} submissions for assignment {assignment_id} in course {course_id}.")
+        # Inject Labels into the submissions for display
+        points_possible = submissions_resp.get("assignment", {}).get("points_possible", None)
+        for i, submission in enumerate(submissions):
+            submitted_at = submission.get("submitted_at", None)
+            submission_type = submission.get("submission_type", None)
+            score = submission.get("score", None) or submission.get("points", None)
+            display_name = ", ".join([attach.get("display_name", None) for attach in submission.get("attachments", None)])
+            submissions[i]["meta_label"] = f"Submission {i+1}{' - ' + format_date(submitted_at) if submitted_at else ''}{' - ' + submission_type if submission_type else ''}{' - ' + score + '/' + points_possible if score and points_possible else ''}{' - ' + display_name if display_name else ' - No Display Name'}"
+        
+        use_fallback = fallback_tui or not (tui_for_download or tui)
+        selected_submission = select_from_options(submissions, "meta_label", "Select a submission to download:", fallback=use_fallback)
+        
+        if selected_submission is None:
+            print("No submission selected.")
+            return
+        
+        attachments = selected_submission.get("attachments", None)
+        if attachments:
+            for attach in attachments:
+                download_file(attach.get("url", None), os.path.join(output_directory, attach.get("filename", None)), overwrite=overwrite)
+            print(f"Downloaded {len(attachments)} attachments from the latest submission to {output_directory}.")
+        return
+
+def clone_command(args):
+    """Handle the clone command to download assignments"""
+    # Validate and get required arguments
+    if not validate_clone_args(args):
+        return
+    
+    handle_clone_command(args)
 
 def push_command(args):
     """Handle the push command to submit assignments"""
-    # If course_id and assignment_id are not provided, try to load from local config
+    # Get args
+    try:
+        missing_args = get_needed_args(args, ["course_id", "assignment_id", "file"], True)
+    except Exception as e:
+        print(f"Error: {e}")
+        return
+    
+    if missing_args:
+        need_argument_output("push", missing_args)
+        return
+    
     course_id = args.course_id
     assignment_id = args.assignment_id
     file_path = args.file
-    
-    # Check if course_id and assignment_id are provided
-    if not course_id or not assignment_id:
-        # If not load from local_config
-        local_config = Config.load_project_config()
 
-        if local_config:
-            if not course_id:
-                course_id = local_config.get("course_id")
-            
-            if not assignment_id:
-                assignment_id = local_config.get("assignment_id")
-
-    # If file is not provided, try to get from local config
-    if not file_path:
-        local_config = Config.load_project_config()
-        if local_config and "default_upload" in local_config:
-            file_path = local_config.get("default_upload")
-
-    # If missing any required arguments, show error and exit
-    if not course_id or not assignment_id or not file_path:
-        missing = []
-        if not course_id:
-            missing.append('course_id')
-        if not assignment_id:
-            missing.append('assignment_id')
-        if not file_path:
-            missing.append('file_path')
-        print(f"Error: Missing {', '.join(missing)}.")
-        print("Please provide all requirements as arguments or set them in the local configuration.")
-        print("Use 'canvas config list' to see the current configuration or 'canvas push -h' for help.")
-        return
-    
     # Ensure the file path is absolute
     file_path = Path(file_path).resolve()
 
@@ -231,17 +299,17 @@ def push_command(args):
         # Handle file not found error
         print(f"Error: File '{file_path}' not found.")
         return
-    finally:
-        # Close the file if it was opened
-        if 'f' in locals():
-            f.close()
 
     # Create API client and submit the assignment
     try:
         api = CanvasAPI()
-        api.submit_assignment(course_id, assignment_id, file_path)
+        submit_assignment(course_id, assignment_id, file_path)
     except ValueError as e:
         print(f"Error: {e}")
+        return
+    except Exception as e:
+        print(f"Error: {e}")
+        print(f"Traceback: {e.__traceback__}")
         return
 
 def status_command(args):
@@ -257,21 +325,13 @@ def status_command(args):
     if args.global_view:
         show_global_status(api, args)
         return
-
-    # Determine if we should use TUI to select course/assignment
-    if args.tui:
-        # Run the TUI to select course and assignment
-        course_id, assignment_id, course_name, assignment_name = run_tui(fallback=args.fallback)
-        
-        if not course_id or not assignment_id:
-            print("Status check cancelled.")
-            return
-        
-        # Update args with values from TUI
-        args.course_id = course_id
-        args.assignment_id = assignment_id
     
-    # Get course_id and assignment_id from args or config
+    try:
+        get_needed_args(args, ["course_id", "assignment_id"], True)
+    except Exception as e:
+        print(f"Error: {e}")
+        return
+    
     course_id = args.course_id
     assignment_id = args.assignment_id
     
@@ -304,6 +364,8 @@ def help_command(args):
         print("  config  - Configure Canvas API settings")
         print("  init    - Initialize a Canvas project")
         print("  push    - Submit an assignment to Canvas")
+        print("  pull    - Download assignment submissions from Canvas")
+        print("  clone   - Download assignment details from Canvas")
         print("  status  - Get status information about assignments and courses")
         print("  help    - Show help information")
 
@@ -313,6 +375,8 @@ def main():
     command_handlers = {
         "config": config_command,
         "init": init_command,
+        "pull": pull_command,
+        "clone": clone_command,
         "push": push_command,
         "status": status_command,
         "help": help_command

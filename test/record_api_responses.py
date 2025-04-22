@@ -53,6 +53,7 @@ def record_api_responses(url=None):
     
     # Record courses
     print("\nFetching courses...")
+    courses = None
     try:
         courses = api.get_courses()
         if courses:
