@@ -136,16 +136,18 @@ def show_global_status(api, args):
                 bar = f"\033[90m{' ' * sizes['progress']}{reset_color}"
                 message = "No grade available"
 
+            if sizes['messages'] > 0:
+                trimmed_message = message[:sizes['messages']]
+                print(f"{nickname:<{sizes['course']}} │ {grade_text:>{sizes['grade'] + len(grade_color) + len(reset_color)}} │ {bar} │ {trimmed_message}")
+            else:
+                print(f"{nickname:<{sizes['course']}} │ {grade_text:>{sizes['grade'] + len(grade_color) + len(reset_color)}} │ {bar}")
+
         else:
+            reset_color = '\033[0m'
             grade_text = f"\033[90mN/A{reset_color}"
             bar = f"\033[90m{' ' * sizes['progress']}{reset_color}"
             message = "No enrollment data"
 
-        if sizes['messages'] > 0:
-            trimmed_message = message[:sizes['messages']]
-            print(f"{nickname:<{sizes['course']}} │ {grade_text:>{sizes['grade'] + len(grade_color) + len(reset_color)}} │ {bar} │ {trimmed_message}")
-        else:
-            print(f"{nickname:<{sizes['course']}} │ {grade_text:>{sizes['grade'] + len(grade_color) + len(reset_color)}} │ {bar}")
 
     print("=" * term_width)
     print("Use --json for complete details".center(term_width))
@@ -255,8 +257,10 @@ def show_local_status(args: dict, api, course_id, assignment_id) -> None:
         
         if all:
             print(f"Score: {submission.get('score')}")        
-        print(f"Grade: {submission.get('grade')} / {assignment.get('points_possible')}")
-        print(f"Grade Percentage: {submission.get('grade') / assignment.get('points_possible') * 100:.2f}%")
+
+        if submission.get('grade'):
+            print(f"Grade: {submission.get('grade')} / {assignment.get('points_possible')}")
+            print(f"Grade Percentage: {submission.get('grade') / assignment.get('points_possible') * 100:.2f}%")
         
         if all:
             print(f"Attempt: {submission.get('attempt')}")

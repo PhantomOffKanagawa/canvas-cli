@@ -5,7 +5,7 @@ Helper functions for the CLI
 from .tui import run_tui, select_file
 from .config import Config
 
-def get_needed_args(args, required_args, verbose=False):
+def get_needed_args(args, required_args, verbose=False) -> list[str]:
     """
     Gets the value for the required arguments from the config file or TUI.
 
@@ -25,7 +25,7 @@ def get_needed_args(args, required_args, verbose=False):
         args.__dict__[arg] = Config.get_value(arg, ["local", "global"])
     
     # Check if user requested the TUI interface
-    if args.tui == True:
+    if 'tui' in args and args.tui == True:
         # Run the TUI to select course and assignment
         course_id, assignment_id, course_name, assignment_name = run_tui(args.fallback_tui)
         

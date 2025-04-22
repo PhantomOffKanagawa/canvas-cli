@@ -1,0 +1,11 @@
+{
+
+    "typeChecking": {
+        "strict": true
+    },
+    "exclude": [
+        "**/__pycache__",
+        "canvas_cmd.egg*/"
+    ],
+    "reportAttributeAccessIssue": "warning"
+}

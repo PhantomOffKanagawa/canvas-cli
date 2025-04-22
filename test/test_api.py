@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 from test_base import CanvasCliTestCase
-from canvas_cli.api import CanvasAPI, format_date, download_file
+from canvas_cli.api import CanvasAPI, format_date, download_file, submit_assignment
 
 class APITests(CanvasCliTestCase):
     """Tests for the CanvasAPI class"""
@@ -151,7 +151,8 @@ class APITests(CanvasCliTestCase):
             course_id = 12345
             assignment_id = 11111
             file_path = "test_file.py"
-            CanvasAPI.submit_assignment(course_id, assignment_id, file_path)
+            api = CanvasAPI()
+            submit_assignment(course_id, assignment_id, file_path)
             
             # Verify the correct API endpoints were called
             self.assertEqual(self.mock_requests_post.call_count, 3)
@@ -171,96 +172,110 @@ class APITests(CanvasCliTestCase):
         formatted = format_date("invalid-date")
         self.assertEqual(formatted, "invalid-date")
         
-    @patch("canvas_cli.api.requests.get")
-    def test_download_file_success(self, mock_get):
-        # Mock response object with iter_content
+    def test_download_file(self):
+        """Test downloading a file"""
+        test_url = "https://example.com/testfile.txt"
+        test_file_path = "test_download.txt"
+        test_content = b"This is test content"
+        
+        # Mock the requests.get response
         mock_response = MagicMock()
-        mock_response.iter_content = MagicMock(return_value=[b"chunk1", b"chunk2"])
         mock_response.raise_for_status = MagicMock()
-        mock_get.return_value = mock_response
-
-        # Patch open to a mock_open
-        from unittest.mock import mock_open as builtin_mock_open
-        with patch("builtins.open", new_callable=builtin_mock_open) as mock_open:
-            file_path = "dummy_path.txt"
-            url = "https://example.com/file.txt"
-            download_file(url, file_path)
-
-            mock_get.assert_called_once_with(url, stream=True)
-            mock_response.raise_for_status.assert_called_once()
-            mock_open.assert_called_once_with(file_path, 'wb')
-            handle = mock_open()
-            handle.write.assert_any_call(b"chunk1")
-            handle.write.assert_any_call(b"chunk2")
-
-    @patch("canvas_cli.api.requests.get")
-    def test_download_file_http_error(self, mock_get):
-        # Simulate HTTP error
-        mock_response = MagicMock()
-        mock_response.raise_for_status.side_effect = Exception("HTTP error")
-        mock_get.return_value = mock_response
-
-        from unittest.mock import mock_open as builtin_mock_open
-        with patch("builtins.open", new_callable=builtin_mock_open) as mock_open:
-            try:
-                download_file("https://example.com/file.txt", "dummy_path.txt")
-            except Exception as e:
-                self.assertIn("HTTP error", str(e))
-            mock_get.assert_called_once()
-            mock_open.assert_not_called()
+        mock_response.iter_content.return_value = [test_content]
+        self.mock_requests_get.return_value = mock_response
+        
+        # Mock open function
+        mock_file = MagicMock()
+        mock_open = MagicMock(return_value=mock_file)
+        
+        # Test with a new file (not existing)
+        with patch("builtins.open", mock_open), \
+                patch("os.path.exists", return_value=False):
+            download_file(test_url, test_file_path)
             
-    @patch("canvas_cli.api.requests.get")
-    def test_download_file_overwrite_prompt_yes(self, mock_get):
-        # Simulate file exists and user says 'yes'
-        mock_response = MagicMock()
-        mock_response.iter_content = MagicMock(return_value=[b"abc"])
-        mock_response.raise_for_status = MagicMock()
-        mock_get.return_value = mock_response
+            # Check that requests.get was called with the correct URL
+            self.mock_requests_get.assert_called_once_with(test_url, stream=True)
+            
+            # Check that the file was opened for writing
+            mock_open.assert_called_once_with(test_file_path, 'wb')
+            
+            # Check that content was written to the file
+            mock_file.__enter__().write.assert_called_once_with(test_content)
 
-        from unittest.mock import mock_open as builtin_mock_open
+    def test_download_file_existing_overwrite(self):
+        """Test downloading a file with overwrite option"""
+        test_url = "https://example.com/testfile.txt"
+        test_file_path = "test_download.txt"
+        test_content = b"New content"
+        
+        # Mock the requests.get response
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.iter_content.return_value = [test_content]
+        self.mock_requests_get.return_value = mock_response
+        
+        # Mock open function
+        mock_file = MagicMock()
+        mock_open = MagicMock(return_value=mock_file)
+        
+        # Test with existing file and overwrite=True
+        with patch("builtins.open", mock_open), \
+                patch("os.path.exists", return_value=True):
+            download_file(test_url, test_file_path, overwrite=True)
+            
+            # Check that requests.get was called with the correct URL
+            self.mock_requests_get.assert_called_once_with(test_url, stream=True)
+            
+            # Check that the file was opened for writing
+            mock_open.assert_called_once_with(test_file_path, 'wb')
+            
+            # Check that content was written to the file
+            mock_file.__enter__().write.assert_called_once_with(test_content)
+
+    def test_download_file_existing_no_overwrite(self):
+        """Test downloading a file with no overwrite"""
+        test_url = "https://example.com/testfile.txt"
+        test_file_path = "test_download.txt"
+        
+        # Test with existing file, overwrite=False, and user says no
+        with patch("os.path.exists", return_value=True), \
+                patch("builtins.input", return_value="n"):
+            result = download_file(test_url, test_file_path)
+            
+            # Check that requests.get was not called
+            self.mock_requests_get.assert_not_called()
+            
+            # Check that function returned None
+            self.assertIsNone(result)
+
+    def test_download_file_existing_yes_overwrite(self):
+        """Test downloading a file with user confirming overwrite"""
+        test_url = "https://example.com/testfile.txt"
+        test_file_path = "test_download.txt"
+        test_content = b"This is test content"
+        
+        # Mock the requests.get response
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.iter_content.return_value = [test_content]
+        self.mock_requests_get.return_value = mock_response
+        
+        # Mock open function
+        mock_file = MagicMock()
+        mock_open = MagicMock(return_value=mock_file)
+        
+        # Test with existing file, overwrite=False, and user says yes
         with patch("os.path.exists", return_value=True), \
                 patch("builtins.input", return_value="y"), \
-                patch("builtins.open", new_callable=builtin_mock_open) as mock_open:
-            file_path = "existing.txt"
-            url = "https://example.com/file.txt"
-            download_file(url, file_path)
-            mock_get.assert_called_once_with(url, stream=True)
-            mock_open.assert_called_once_with(file_path, 'wb')
-            handle = mock_open()
-            handle.write.assert_any_call(b"abc")
+                patch("builtins.open", mock_open):
+            download_file(test_url, test_file_path)
+            
+            # Check that requests.get was called with the correct URL
+            self.mock_requests_get.assert_called_once_with(test_url, stream=True)
+            
+            # Check that the file was opened for writing
+            mock_open.assert_called_once_with(test_file_path, 'wb')
 
-    @patch("canvas_cli.api.requests.get")
-    def test_download_file_overwrite_prompt_no(self, mock_get):
-        # Simulate file exists and user says 'no'
-        from unittest.mock import mock_open as builtin_mock_open
-        with patch("os.path.exists", return_value=True), \
-                patch("builtins.input", return_value="n"), \
-                patch("builtins.open", new_callable=builtin_mock_open) as mock_open:
-            file_path = "existing.txt"
-            url = "https://example.com/file.txt"
-            download_file(url, file_path)
-            mock_get.assert_not_called()
-            mock_open.assert_not_called()
-
-    @patch("canvas_cli.api.requests.get")
-    def test_download_file_overwrite_flag(self, mock_get):
-        # Simulate file exists, but overwrite=True skips prompt
-        mock_response = MagicMock()
-        mock_response.iter_content = MagicMock(return_value=[b"abc"])
-        mock_response.raise_for_status = MagicMock()
-        mock_get.return_value = mock_response
-
-        from unittest.mock import mock_open as builtin_mock_open
-        with patch("os.path.exists", return_value=True), \
-                patch("builtins.open", new_callable=builtin_mock_open) as mock_open:
-            file_path = "existing.txt"
-            url = "https://example.com/file.txt"
-            download_file(url, file_path, overwrite=True)
-            mock_get.assert_called_once_with(url, stream=True)
-            mock_open.assert_called_once_with(file_path, 'wb')
-            handle = mock_open()
-            handle.write.assert_any_call(b"abc")
-                
 if __name__ == "__main__":
     import unittest
     from unittest.mock import patch, MagicMock

@@ -38,7 +38,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     return parser
 
-def setup_config_parser(subparsers: argparse.ArgumentParser) -> None:
+def setup_config_parser(subparsers) -> None:
     """Set up the config command parser"""
     # Config command parser (matches git config style)
     config_parser = subparsers.add_parser("config", help="Configure Canvas API settings")
@@ -117,7 +117,7 @@ def setup_config_parser(subparsers: argparse.ArgumentParser) -> None:
     # config_parser.add_argument('name', nargs='?', help="Setting key")
     # config_parser.add_argument('value', nargs='?', help="Value to set for the key")
 
-def setup_init_parser(subparsers: argparse.ArgumentParser) -> None:
+def setup_init_parser(subparsers) -> None:
     """Set up the init command parser"""
     init_parser = subparsers.add_parser("init", help="Initialize a Canvas project in the current directory")
     init_parser.add_argument("-cid", "--course_id", help="Course ID")
@@ -128,14 +128,14 @@ def setup_init_parser(subparsers: argparse.ArgumentParser) -> None:
     init_parser.add_argument("-t", "--tui", help="Select values from a User Interface", action="store_true")
     init_parser.add_argument("--fallback", dest="fallback_tui", help="Use fallback tui", action="store_true")
 
-def setup_push_parser(subparsers: argparse.ArgumentParser) -> None:
+def setup_push_parser(subparsers) -> None:
     """Set up the push command parser"""
     push_parser = subparsers.add_parser("push", help="Submit an assignment to Canvas")
     push_parser.add_argument("-cid", "--course_id", metavar="id", type=int, help="Course ID")
     push_parser.add_argument("-aid", "--assignment_id", metavar="id", type=int, help="Assignment ID")
     push_parser.add_argument("-f", "--file", metavar="file", type=str, help="Path to the file to submit (optional if set during init)")
 
-def setup_status_parser(subparsers: argparse.ArgumentParser) -> None:
+def setup_status_parser(subparsers) -> None:
     """Set up the status command parser"""
     status_parser = subparsers.add_parser("status", help="Get status about an assignment or class")
     status_parser.add_argument("-cid", "--course_id", metavar="id", type=int, help="Course ID")
@@ -153,7 +153,7 @@ def setup_status_parser(subparsers: argparse.ArgumentParser) -> None:
     global_parser = subparser.add_parser("all", help="Show grades from all classes")
     global_parser.add_argument("-m", "--messages", dest="messages", action="store_true", help="Show messages for global view")
 
-def setup_pull_parser(subparsers: argparse.ArgumentParser) -> None:
+def setup_pull_parser(subparsers) -> None:
     pull_parser = subparsers.add_parser("pull", help="Download assignment details from Canvas")    
     
     identify_group = pull_parser.add_argument_group("Course and Assignment Identification")
