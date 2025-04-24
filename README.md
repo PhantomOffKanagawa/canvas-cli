@@ -24,7 +24,7 @@ Are you tired of navigating through the Canvas web interface to submit assignmen
 
 ## ✨ Features
 
-- 📤 ~~**Submit assignments** directly from your terminal~~
+- 📤 **Submit assignments** directly from your terminal
 - 🔄 ~~**Initialize projects** with default assignment and file info for quick upload~~
 - 🔽 ~~**Pull descriptions** formatted to markdown~~
 - 📜 ~~**View assignment details** and course information~~

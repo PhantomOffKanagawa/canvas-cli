@@ -21,7 +21,7 @@ def push_callback(
         None, "--assignment_id", "-aid", help="Assignment ID"
     ),
     file: Optional[str] = Option(
-        None, "--file", "-f", help="Path to the file to submit (optional if set during init)"
+        None, "--file", "-f", help="Path to the file to be submitted"
     ),
 ):
     """Submit an assignment to Canvas"""
