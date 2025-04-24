@@ -35,6 +35,8 @@ def get_cascading_config_value(key: str, override: Optional[str] = None) -> Opti
     global_config = load_config(GLOBAL_CONFIG_PATH)
     return local_config.get(key) or global_config.get(key)
 
+get_key = lambda key, ctx: get_cascading_config_value(key, ctx.params.get(key))
+
 # ──────────────────────
 # HANDLER FUNCTIONS
 # ──────────────────────

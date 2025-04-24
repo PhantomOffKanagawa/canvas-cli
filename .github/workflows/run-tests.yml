@@ -25,6 +25,9 @@ jobs:
         cache-dependency-path: |
           requirements.txt
           setup.py
+
+    - name: Set PYTHONPATH
+      run: echo "PYTHONPATH=${GITHUB_WORKSPACE}" >> $GITHUB_ENV
     
     - name: Install dependencies
       run: |
