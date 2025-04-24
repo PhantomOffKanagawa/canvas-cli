@@ -14,6 +14,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "requests>=2.25.0",
+        "typer>=0.4.0",
     ],
     extras_require={
         "gui": [

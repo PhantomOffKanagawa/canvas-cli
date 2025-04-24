@@ -2,7 +2,7 @@ name: Run Tests
 
 on:
   push:
-    branches: [ main, dev, testing ]
+    branches: [ main, dev, cli-refactor ]
   pull_request:
     branches: [ main, dev ]
   workflow_dispatch:  # Allows manual triggering

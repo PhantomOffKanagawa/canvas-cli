@@ -4,20 +4,31 @@
 ![Tests](https://img.shields.io/github/actions/workflow/status/PhantomOffKanagawa/canvas-cli/run-tests.yml?style=for-the-badge&branch=main&label=Main&logo=pytest)
 ![Tests](https://img.shields.io/github/actions/workflow/status/PhantomOffKanagawa/canvas-cli/run-tests.yml?style=for-the-badge&logo=pytest)
 ![Python](https://img.shields.io/badge/Python-3.6+-blue?style=for-the-badge&logo=python)
+![Typer](https://img.shields.io/badge/Typer-black.svg?style=for-the-badge&logo=FastAPI&logoColor=000000&labelColor=e6e6e6)
 ![License](https://img.shields.io/badge/License-GPLv3-green?style=for-the-badge)
 [![PyPI](https://img.shields.io/pypi/v/canvas-cmd?style=for-the-badge&logo=pypi)](https://pypi.org/project/canvas-cmd/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/canvas-cmd?style=for-the-badge&logo=pypi)](https://pypi.org/project/canvas-cmd/)
+[![GitHub Repo stars](https://img.shields.io/github/stars/PhantomOffKanagawa/canvas-cli?style=for-the-badge&logo=github)](https://github.com/PhantomOffKanagawa/canvas-cli)
 
 > **Automate your Canvas LMS submissions with a git like command-line interface!**
 
 Are you tired of navigating through the Canvas web interface to submit assignments? Canvas CLI puts the power of Canvas in your terminal, making it easy to submit assignments and manage your Canvas interactions with simple commands.
 
+## 🌿 CLI-Refactor Branch
+> **This branch is a work in progress and may not be fully functional.** \
+> **Please report any issues you encounter.** \
+> The majority of the main release of this project was made in two days of no sleep, so it is a bit rough around the edges. \
+> This branch is a refactor of the code to use `typer` for a more robust CLI experience. \
+> The goal is to make the code cleaner and easier to maintain, while also adding new features and improving the overall user experience. \
+> This project is currently in pre-release status. Most features are not implemented, so you will encounter some rough edges or features marked as "Not Implemented" (NI).
+
 ## ✨ Features
 
-- 📤 **Submit assignments** directly from your terminal
-- 🔄 **Initialize projects** with default assignment and file info for quick upload
-- 🔽 **Pull descriptions** formatted to markdown
-- 📜 **View assignment details** and course information
-- 📂 **Download submissions** to quickly get previously submitted work
+- 📤 ~~**Submit assignments** directly from your terminal~~
+- 🔄 ~~**Initialize projects** with default assignment and file info for quick upload~~
+- 🔽 ~~**Pull descriptions** formatted to markdown~~
+- 📜 ~~**View assignment details** and course information~~
+- 📂 ~~**Download submissions** to quickly get previously submitted work~~
 - ⚙️ **Configure once, use anywhere** with global and project-specific settings
 - 🔗 **Based on git and npm** paradigms for a quick learning curve with `config`, `init`, `push`, `pull`, `status`, and `clone`
 - 🚀 **Fast and efficient** workflow for developers and students who live in the terminal
@@ -34,7 +45,7 @@ Please, please, PLEASE [report any bugs or issues you encounter](https://github.
 
 ```bash
 # Clone this repository
-git clone https://github.com/PhantomOffKanagawa/canvas-cli.git
+git clone https://github.com/PhantomOffKanagawa/canvas-cli.git -b cli-refactor
 cd canvas-cli
 
 # Install in development mode
@@ -141,22 +152,22 @@ Future improvements and features planned for Canvas CLI:
 
 - 🎨 Improve CLI interface and error handling
 - 🔄 Consider git remote paradigm over npm package.json for `canvas init`
-- 💬 ~~Add `canvas pull` to download current submissions~~
-- ⬇️ ~~Add `canvas clone` to get assignment descriptions~~
-- ⚙️ Implement cascading config scope like git
-- 🔍 ~~Build a TUI for getting course ID and assignment ID from name~~
-- 📊 ~~Add ability to retrieve versioning of submissions~~
-- 📅 ~~Implement `git status`-like command to get due dates, grading status, and comments~~
+- 💬 Add `canvas pull` to download current submissions
+- ⬇️ Add `canvas clone` to get assignment descriptions
+- ⚙️ ~~Implement cascading config scope like git~~
+- 🔍 Build a TUI for getting course ID and assignment ID from name
+- 📊 Add ability to retrieve versioning of submissions
+- 📅 Implement `git status`-like command to get due dates, grading status, and comments
     - 🎓 Get grades via submissions
     - 🏛️ Show completed vs open assignments
 - 💬 Add commands for commenting on submissions
-- 📜 ~~Add more detailed documentation and examples~~
-- 🎬 ~~Add a github actions integration to automatically submit on push to main~~
-- 📦 ~~Package the tool for easy installation via pip or conda~~
+- 📜 Add more detailed documentation and examples
+- 🎬 Add a github actions integration to automatically submit on push to main
+- 📦 Package the tool for easy installation via pip or conda
 - 🤐 Add support for zipping up multiple folders for submission
 - 📦 Add support for submitting multiple files at once
 - 📃 Add support for pagination
-- 📂 ~~Add file select support to TUIs~~
+- 📂 Add file select support to TUIs
 - 🪙 Add real caching between calls rather than just in place
 
 ## 🤝 Contributing
