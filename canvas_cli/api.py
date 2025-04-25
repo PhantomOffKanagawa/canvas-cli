@@ -43,14 +43,77 @@ class CanvasAPI:
         
         # Initialize the context
         self.ctx = ctx
+        
+    def get_submissions(self, course_id: int, assignment_id: int, props: dict | None = None) -> Dict:
+        """Get the current user's submission for an assignment
+        
+        Args:
+            course_id: The Canvas course ID
+            assignment_id: The Canvas assignment ID
+            
+        Returns:
+            Submission dictionary or empty dict on error
+        """
+        
+        # Check if token and host are set in the configuration
+        if not self.token or not self.host:
+            echo("Error: Missing token or host in configuration.", ctx=self.ctx, level="error")
+            echo("Please run 'canvas config set --global token <token>' and 'canvas config set --global host <host>' to set them.", ctx=self.ctx, level="error")
+            return {}
+        
+        # Check if course_id and assignment_id are provided
+        if not course_id or not assignment_id:
+            echo("Error: Missing course_id or assignment_id.", ctx=self.ctx, level="error")
+            return {}
+        
+        # Check if submission is already cached and not expired
+        cache_key = f"submission_{course_id}_{assignment_id}"
+        if cache_key in self.cache and (datetime.now() - self.cache_time.get(cache_key, datetime.min)).total_seconds() < self.cache_expiry:
+            return self.cache[cache_key]
+
+        # Default params
+        if props is None:
+            props = {
+                'include[]': ['submission_history', 'submission_comments', 'submission_html_comments', 'rubric_assessment',
+                              'assignment', 'visibility', 'course', 'user', 'group', 'read_status', 'student_entered_score'],
+            }
+            
+        try:
+            url = f"{self.base_url}/courses/{course_id}/assignments/{assignment_id}/submissions/self"
+            response = requests.get(url, headers=self.headers, params=props)
+            response.raise_for_status()
+            submission_data = response.json()
+            
+            # Cache the submission data
+            self.cache[cache_key] = submission_data
+            self.cache_time[cache_key] = datetime.now()
+            
+            return submission_data
+        except requests.RequestException as e:
+            print(f"Error fetching submission: {e}")
+            return {}
 
     def submit_assignment(self, course_id, assignment_id, file_path):
-        """Submit assignment file to Canvas"""
+        """Submit assignment file to Canvas
+        
+        Args:
+            course_id: The Canvas course ID
+            assignment_id: The Canvas assignment ID
+            file_path: The path to the file to be submitted
+        
+        Returns:
+            None
+        """
 
         # Check if token and host are set in the configuration
         if not self.token or not self.host:
             echo("Error: Missing token or host in configuration.", ctx=self.ctx, level="error")
-            print("Please run 'canvas config set --global token <token>' and 'canvas config set --global host <host>' to set them.")
+            echo("Please run 'canvas config set --global token <token>' and 'canvas config set --global host <host>' to set them.", ctx=self.ctx, level="error")
+            return
+        
+        # Check if course_id and assignment_id are provided
+        if not course_id or not assignment_id:
+            echo("Error: Missing course_id or assignment_id.", ctx=self.ctx, level="error")
             return
         
         # Check if the file exists
@@ -109,3 +172,49 @@ class CanvasAPI:
         submit_res = requests.post(submit_url, headers=self.headers, json=payload)
         submit_res.raise_for_status()
         echo("Assignment submitted successfully.", ctx=self.ctx)
+        
+    # Helper functions for formatting API data
+    @staticmethod
+    def format_date(date_str):
+        """Format a date string nicely
+        
+        Args:
+            date_str: ISO format date string from Canvas API
+            
+        Returns:
+            Formatted date string
+        """
+        if not date_str:
+            return "No date specified"
+        try:
+            dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
+        except:
+            return date_str
+
+    @staticmethod
+    def download_file(url: str, file_path: str, overwrite: bool = False) -> None | requests.Response:
+        """Download a file from a URL
+
+        Args:
+            url: URL of the file to download
+            file_path: Path to save the downloaded file
+            overwrite: Flag to indicate whether to overwrite the file if it exists
+
+        Returns:
+            None
+        """
+        if not overwrite and os.path.exists(file_path):
+            print(f"File {file_path} already exists. Overwrite? (y/N): ", end='')
+            
+            response = input().strip().lower()
+            if response not in ['y', 'yes']:
+                return
+
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        with open(file_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+                
+        return response

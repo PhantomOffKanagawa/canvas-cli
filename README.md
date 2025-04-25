@@ -25,10 +25,10 @@ Are you tired of navigating through the Canvas web interface to submit assignmen
 ## ✨ Features
 
 - 📤 **Submit assignments** directly from your terminal
-- 🔄 ~~**Initialize projects** with default assignment and file info for quick upload~~
+- 🔄 **Initialize projects** with default assignment and file info for quick upload
 - 🔽 ~~**Pull descriptions** formatted to markdown~~
 - 📜 ~~**View assignment details** and course information~~
-- 📂 ~~**Download submissions** to quickly get previously submitted work~~
+- 📂 **Download submissions** to quickly get previously submitted work
 - ⚙️ **Configure once, use anywhere** with global and project-specific settings
 - 🔗 **Based on git and npm** paradigms for a quick learning curve with `config`, `init`, `push`, `pull`, `status`, and `clone`
 - 🚀 **Fast and efficient** workflow for developers and students who live in the terminal

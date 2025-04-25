@@ -4,6 +4,7 @@ from typing import Optional
 from args.config_args import config_app
 from args.push_args import push_app
 from args.init_args import init_app
+from args.pull_args import pull_app
 from canvas_cli.handler_helper import ContextState
 from canvas_cli.api import CanvasAPI
 
@@ -33,6 +34,8 @@ app.add_typer(config_app, name="config")
 app.add_typer(push_app, name="push")
 
 app.add_typer(init_app, name="init")
+
+app.add_typer(pull_app, name="pull")
 
 
 # ────────────────────
