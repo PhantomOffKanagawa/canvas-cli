@@ -4,8 +4,10 @@ from typing import Any, Optional
 import json
 import os
 from pathlib import Path
-from canvas_cli.handler_helper import echo
+from canvas_cli.handler_helper import echo, get_api
 from handlers.config_handler import get_key
+from canvas_cli.api import CanvasAPI
+
 
 # ──────────────────────
 # HANDLER FUNCTIONS
@@ -14,10 +16,31 @@ from handlers.config_handler import get_key
 def handle_push(ctx: typer.Context, course_id: Optional[int], assignment_id: Optional[int], file: Optional[str]):
     """Push a file to an assignment in Canvas LMS"""
     
+    # Get the course_id, assignment_id, and file from the context or configs
     course_id = get_key("course_id", ctx)
     assignment_id = get_key("assignment_id", ctx)
     file = get_key("file", ctx)
     
-    echo(f"Course ID: {course_id}", ctx=ctx)
-    echo(f"Assignment ID: {assignment_id}", ctx=ctx)
-    echo(f"File: {file}", ctx=ctx)
+    # Check if course_id, assignment_id, and file are provided
+    if not course_id or not assignment_id:
+        echo("Error: Missing course_id, assignment_id.", ctx=ctx, level="error")
+        return
+
+    # Check if file is provided
+    if not file:
+        typer.echo("Error: File path must be provided.")
+        return
+    
+    # Check if the file exists
+    if not os.path.exists(file):
+        echo(f"Error: File '{file}' does not exist.", ctx=ctx, level="error")
+        return
+    
+    # Get the API instance from the context
+    api = get_api(ctx)
+    if not api:
+        echo("Error: Failed to get API instance.", ctx=ctx, level="error")
+        return
+    
+    # Submit the assignment
+    response = api.submit_assignment(course_id, assignment_id, file)

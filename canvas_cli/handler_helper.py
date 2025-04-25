@@ -1,6 +1,21 @@
 from functools import wraps
 from typing import Any, Optional
 import typer
+from typing import Optional, TYPE_CHECKING
+import typer
+
+if TYPE_CHECKING:
+    from canvas_cli.api import CanvasAPI  # only imported for type hints
+
+# ──────────────────────
+# CONTEXT MANAGER
+# ──────────────────────
+
+# Holds all context state (like a dependency container)
+class ContextState:
+    def __init__(self):
+        self.settings = Settings()
+        self.api: Optional["CanvasAPI"] = None  # use string form for type hint
 
 # Settings class to hold the verbosity and quietness flags
 # This class is used to manage the settings for the CLI application
@@ -8,9 +23,16 @@ class Settings:
     verbose: bool = False
     quiet: bool = False
 
-# Function to get the settings object from the context
+# Accessor for the settings object
 def get_settings(ctx: typer.Context) -> Settings:
-    return ctx.ensure_object(Settings)
+    return ctx.ensure_object(ContextState).settings
+
+# Function to set the API instance in the context
+def get_api(ctx: typer.Context) -> Optional["CanvasAPI"]:
+    state = ctx.ensure_object(ContextState)
+    if state.api is None:
+        raise RuntimeError("API instance is not initialized")
+    return state.api
 
 # Handle sending messages in terms of verbosity and quietness
 # This function will check the settings and decide whether to print the message or not
