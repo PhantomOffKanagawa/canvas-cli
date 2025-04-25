@@ -1,12 +1,8 @@
-from _pytest import runner
-import json
+from unittest.mock import MagicMock, patch
 import pytest
-from unittest.mock import MagicMock, patch, call
-import typer
-from canvas_cli.cli import app
-from typer.testing import CliRunner
-from handlers.init_handler import init_handler
-from handlers.config_handler import save_config, handle_config_get, GLOBAL_CONFIG_PATH, LOCAL_CONFIG_PATH
+import json
+from canvas_cli.constants import GLOBAL_CONFIG_PATH, LOCAL_CONFIG_PATH
+from handlers.config_handler import save_config, handle_config_get
 
 # ──────────────────────
 # CONFIG GET HANDLER TESTS

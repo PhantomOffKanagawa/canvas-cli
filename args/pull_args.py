@@ -29,7 +29,7 @@ def pull(
     # ─────────────────────
     # Selection Options
     # ─────────────────────
-    submission_number: int = typer.Option(None, "--submission-number", "-sn", help="[Selection] Canvas Submission ID."),
+    submission_number: int = typer.Option(None, "--submission-number", "-sn", help="[Selection] Canvas Submission ID (0 is most recent, negative values are from latest submission)."),
 ):
     """
     Download assignment details from Canvas.

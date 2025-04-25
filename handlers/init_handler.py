@@ -66,7 +66,7 @@ Press ^C at any time to quit."""
         config = prompt_for_value_and_set("File: ", "file", template_config, config, file)
         
         # Show potential configuration to the user
-        print(f"About to write to {LOCAL_CONFIG_PATH}\\canvas.json:\n")
+        print(f"About to write to {LOCAL_CONFIG_PATH}:\n")
         print(json.dumps(config, indent=2))
         print()
         

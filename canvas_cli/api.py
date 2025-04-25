@@ -202,14 +202,14 @@ class CanvasAPI:
             overwrite: Flag to indicate whether to overwrite the file if it exists
 
         Returns:
-            None
+            None | requests.Response: Response object if the download is successful, None otherwise
         """
         if not overwrite and os.path.exists(file_path):
             print(f"File {file_path} already exists. Overwrite? (y/N): ", end='')
             
             response = input().strip().lower()
             if response not in ['y', 'yes']:
-                return
+                return None
 
         response = requests.get(url, stream=True)
         response.raise_for_status()
