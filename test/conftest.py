@@ -14,13 +14,16 @@ def isolate_configs(monkeypatch, tmp_path):
     monkeypatch.setattr("canvas_cli.constants.LOCAL_CONFIG_PATH", local_config)
 
 
-@pytest.fixture
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def clean_config():
     # Ensure config doesn't exist before tests
     if canvas_cli.constants.LOCAL_CONFIG_PATH.exists():
         canvas_cli.constants.LOCAL_CONFIG_PATH.unlink()
+    if canvas_cli.constants.GLOBAL_CONFIG_PATH.exists():
+        canvas_cli.constants.GLOBAL_CONFIG_PATH.unlink()
     yield
     # Clean up after tests
     if canvas_cli.constants.LOCAL_CONFIG_PATH.exists():
         canvas_cli.constants.LOCAL_CONFIG_PATH.unlink()
+    if canvas_cli.constants.GLOBAL_CONFIG_PATH.exists():
+        canvas_cli.constants.GLOBAL_CONFIG_PATH.unlink()
