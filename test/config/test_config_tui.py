@@ -1,9 +1,9 @@
 import pytest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
-import json
-import os
-from handlers.config_handler import handle_config_tui, load_config
+from unittest.mock import MagicMock, patch, call
+from canvas_cli.cli import app
+from typer.testing import CliRunner
+from handlers.config_handler import handle_config_tui, save_config
+from canvas_cli.constants import GLOBAL_CONFIG_PATH, LOCAL_CONFIG_PATH
 
 class TestHandleConfigTUI:
 
