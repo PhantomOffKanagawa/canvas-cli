@@ -17,13 +17,19 @@ from canvas_cli.tui import run_tui
 def handle_pull(ctx: typer.Context, course_id: Optional[int], assignment_id: Optional[int], output_dir: Optional[str], tui: bool = False):
     """Pull a file from an assignment in Canvas LMS, optionally using TUI"""
     if tui:
-        out = run_tui(file_select_enabled=False)
+        out = run_tui(file_select_enabled=False, ctx=ctx)
         
         if out is None:
             echo("Exiting...", ctx=ctx)
             raise typer.Abort()
         
+        
         course, assignment, _ = out
+        
+        if course is None or assignment is None:
+            echo("Exiting...", ctx=ctx)
+            raise typer.Abort()
+        
         course_id = course.get("id", None)
         assignment_id = assignment.get("id", None)
     

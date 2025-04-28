@@ -1,66 +1,64 @@
 # tui_utils.py
 # Utilities for formatting and icons for TUI
 
+from datetime import datetime
+from handlers.config_handler import get_key_static
+
 # -----------------------------
-# Course icon formatting helper
+# Emoji level logic
 # -----------------------------
-def course_icon(course):
-    """
-    Returns a string with icons representing course status:
-    - Star if favorited
-    - Green dot if available, white if not
-    """
-    icon = ""
-    # Add star if course is favorited
-    if course.get("is_favorite"):
-        icon += "★ "
-    else:
-        icon += "  "
-    # Add green dot if course is available, else white dot
-    if course.get("workflow_state") == "available":
-        icon += "🟢 "
-    else:
-        icon += "⚪ "
-    return icon
 
-# -----------------------------------
-# Assignment icon formatting helper
-# -----------------------------------
-def assignment_icon(assignment):
+def get_emoji_level():
     """
-    Returns a string with icons representing assignment status:
-    - Check if completed/submitted
-    - X if missing
-    - Medal if graded
+    Returns 2 if full emoji (can see 📁), 1 if ascii/partial emoji (can see ✔), 0 if plain text only.
     """
-    icon = ""
-    # Mark as completed if 'submitted' is True
-    if assignment.get("submitted"):
-        icon += "✔ "
-    # Mark as missing if 'missing' is True
-    elif assignment.get("missing"):
-        icon += "✗ "
+    level = get_key_static('tui_emoji_level')
+    if level is None:
+        return 0  # Default to plain text if not set
     else:
-        icon += "  "
-    # Add medal if assignment is graded
-    if assignment.get("graded"):
-        icon += "🏅 "
-    return icon
+        return int(level)
+    
+class EmojiIcons:
+    """
+    Centralized icon set for the TUI, based on emoji level (0=plain, 1=ascii, 2=emoji).
+    Usage: icons = EmojiIcons(); icons.folder, icons.file, icons.check, ...
+    Now also provides icon-formatting methods for course/assignment/file rows.
+    """
+    def __init__(self):
+        lvl = get_emoji_level()
+        # Folder/File
+        self.folder = "📁" if lvl == 2 else ("DIR" if lvl == 1 else "DIR")
+        self.file = "📄" if lvl == 2 else ("F" if lvl == 1 else "F")
+        # Booleans
+        self.check = "✔" if lvl >= 1 else "Y"
+        self.cross = "✗" if lvl >= 1 else "N"
+        # Star/favorite
+        self.star = "★" if lvl == 2 else "*"
+        # Dots (status)
+        self.dot_green = "🟢" if lvl == 2 else ("O" if lvl == 1 else ".")
+        self.dot_white = "⚪" if lvl == 2 else ("." if lvl == 1 else ".")
+        # Medal (graded)
+        self.medal = "🏅" if lvl == 2 else "G"
+    def dot(self, color):
+        return self.dot_green if color == 'green' else self.dot_white
+    def course_icon(self, course):
+        icon = ""
+        icon += self.star + " " if course.get("is_favorite") else "  "
+        icon += self.dot('green' if course.get("workflow_state") == "available" else 'white') + " "
+        return icon
+    def assignment_icon(self, assignment):
+        icon = ""
+        if assignment.get("has_submitted_submissions"):
+            icon += self.check + " "
+        elif assignment.get("due_at") and assignment.get("due_at") < datetime.now().isoformat() and not assignment.get("has_submitted_submissions"):
+            icon += self.cross + " "
+        else:
+            icon += "  "
+        if assignment.get("graded") and hasattr(self, 'medal'):
+            icon += self.medal + " "
+        return icon
+    def format_course(self, course):
+        return f"{self.course_icon(course)}{course['name']}"
+    def format_assignment(self, assignment):
+        return f"{self.assignment_icon(assignment)}{assignment['name']}"
 
-# -----------------------------------
-# Format a course for display in TUI
-# -----------------------------------
-def format_course(course):
-    """
-    Returns a formatted string for a course, including icons and name.
-    """
-    return f"{course_icon(course)}{course['name']}"
-
-# ---------------------------------------
-# Format an assignment for display in TUI
-# ---------------------------------------
-def format_assignment(assignment):
-    """
-    Returns a formatted string for an assignment, including icons and name.
-    """
-    return f"{assignment_icon(assignment)}{assignment['name']}"

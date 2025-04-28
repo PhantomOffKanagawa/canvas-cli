@@ -1,4 +1,5 @@
 import typer
+from handlers.config_handler import handle_config_tui
 from typer import Typer, Argument, Option
 from typing import Optional
 from handlers.config_handler import handle_config_get, handle_config_set, handle_config_unset, handle_config_list
@@ -53,3 +54,13 @@ def config_list(
 ):
     "List all config keys and values"
     handle_config_list(ctx=ctx, global_=global_, local=local, show_origin=show_origin, show_scope=show_scope)
+
+
+@config_app.command("tui")
+def config_tui(
+    ctx: typer.Context,
+    global_: bool = typer.Option(False, "--global", help="Set in global config (default)"),
+    local: bool = typer.Option(False, "--local", help="Set in local config"),
+):
+    """Customize and configure the TUI (emoji, fallback, etc)"""
+    handle_config_tui(ctx, global_, local)

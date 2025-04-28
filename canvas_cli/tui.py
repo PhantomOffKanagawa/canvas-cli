@@ -8,10 +8,13 @@ import curses.textpad
 import os
 import re
 import time
+import json
 from unittest.mock import MagicMock
 from canvas_cli.api import CanvasAPI
-from canvas_cli.handler_helper import sort_courses, sort_assignments
-from canvas_cli.tui_utils import format_course, format_assignment
+from canvas_cli.handler_helper import sort_courses, sort_assignments, echo
+from canvas_cli.tui_utils import EmojiIcons
+from canvas_cli.tui_fallback import fallback_tui
+from handlers.config_handler import get_key
 
 # -----------------------------
 # Fuzzy search helper function
@@ -50,6 +53,15 @@ class ListSelector:
         self.allow_escape_back = allow_escape_back  # If True, ESC returns "__ESCAPE__"
         self.last_mouse_y = None  # Last mouse y position (for hover)
 
+    @property
+    def row_offset(self):
+        return 3 if self.columns else 2
+
+    @property
+    def max_items(self):
+        h, _ = self.stdscr.getmaxyx()
+        return h - (4 if self.columns else 3)
+
     def draw(self):
         """
         Draws the list/table, search bar, and highlights selection/hover.
@@ -59,21 +71,22 @@ class ListSelector:
         # Draw title and search bar
         self.stdscr.addstr(0, 0, self.title[:w-1], curses.A_BOLD)
         self.stdscr.addstr(1, 0, f"Search: {self.query}")
-        max_items = h - (4 if self.columns else 3)
         # Draw table header if columns are defined
         if self.columns:
-            # Only use columns with at least 3 elements (header, lambda, width)
             safe_columns = [col for col in self.columns if len(col) >= 3]
-            col_line = " | ".join([f"{col[0]:<{col[2]}}" for col in safe_columns])
+            col_line = " | ".join([
+                f"{col[0]:^{col[2]}}" if col[2] <= 4 or col[0] in ("Type", "Fav", "✔") else f"{col[0]:<{col[2]}}"
+                for col in safe_columns
+            ])
             self.stdscr.addstr(2, 0, col_line[:w-1], curses.A_UNDERLINE)
         # Scroll logic: keep selected in view
         if self.selected < self.top:
             self.top = self.selected
-        elif self.selected >= self.top + max_items:
-            self.top = self.selected - max_items + 1
+        elif self.selected >= self.top + self.max_items:
+            self.top = self.selected - self.max_items + 1
         # Draw each visible row
-        for idx, item in enumerate(self.filtered[self.top:self.top+max_items]):
-            row = 3 + idx if self.columns else 2 + idx
+        for idx, item in enumerate(self.filtered[self.top:self.top+self.max_items]):
+            row = self.row_offset + idx
             attr = curses.A_NORMAL
             # Highlight selected row
             if idx + self.top == self.selected:
@@ -85,7 +98,8 @@ class ListSelector:
             if self.columns:
                 safe_columns = [col for col in self.columns if len(col) >= 3]
                 col_line = " | ".join([
-                    f"{str((col[1](item) or '') )[:col[2]]:<{col[2]}}" for col in safe_columns
+                    f"{str((col[1](item) or '') )[:col[2]]:^{col[2]}}" if col[2] <= 4 or col[0] in ("Type", "Fav", "✔") else f"{str((col[1](item) or '') )[:col[2]]:<{col[2]}}"
+                    for col in safe_columns
                 ])
                 self.stdscr.addstr(row, 0, col_line[:w-1], attr)
             else:
@@ -97,12 +111,9 @@ class ListSelector:
         Handles mouse events for hover and click selection.
         """
         _, y, _, _, bstate = event
-        h, w = self.stdscr.getmaxyx()
-        max_items = h - 4 if self.columns else h - 3
-        row_offset = 3 if self.columns else 2
-        idx = y - row_offset
+        idx = y - self.row_offset
         # If mouse is over a valid row, update hover and select on click
-        if 0 <= idx < min(len(self.filtered)-self.top, max_items):
+        if 0 <= idx < min(len(self.filtered)-self.top, self.max_items):
             self.hovered = self.top + idx
             if bstate & curses.BUTTON1_CLICKED:
                 self.selected = self.hovered
@@ -162,28 +173,28 @@ class ListSelector:
 # ---------------------------------------------------
 # File selector: navigate folders and pick a file
 # ---------------------------------------------------
-def file_selector(stdscr, start_dir="."):
+def file_selector(stdscr, start_dir=".", icons=None):
     """
     Lets the user navigate directories and select a file.
-    Shows folders with 📁 and files with 📄, and allows going up with "..".
+    Shows folders/files with icons based on emoji level, and allows going up with "..".
     Returns the full path to the selected file, or None if cancelled.
     """
+    if icons is None:
+        from canvas_cli.tui_utils import EmojiIcons
+        icons = EmojiIcons()
     cwd = os.path.abspath(start_dir)
     while True:
         entries = []
-        # Add parent directory entry if not at root
         if os.path.dirname(cwd) != cwd:
             entries.append("..")
-        # List all files and folders in current directory
         for f in sorted(os.listdir(cwd)):
             full = os.path.join(cwd, f)
             if os.path.isdir(full):
                 entries.append(f + "/")
             else:
                 entries.append(f)
-        # Table columns: icon and name
         file_cols = [
-            ("Type", lambda x: "📁" if x.endswith("/") or x == ".." else "📄", 3),
+            ("Type", lambda x: icons.folder if x.endswith("/") or x == ".." else icons.file, 4),
             ("Name", lambda x: x, 32),
         ]
         sel = ListSelector(
@@ -196,7 +207,6 @@ def file_selector(stdscr, start_dir="."):
             allow_escape_back=True
         )
         result = sel.run()
-        # Handle navigation or selection
         if result is None or result == "__ESCAPE__":
             return None
         if result == "..":
@@ -217,14 +227,9 @@ def tui_main(
 ):
     """
     Main TUI workflow: select course, then assignment, then file.
-    Args:
-        stdscr: curses window
-        file_select_enabled: if False, skip file select page
-        file_select_escape_behavior: 'back' (go back to assignment) or 'exit' (return course/assignment, no file)
-        start_page: which page to start on ('course', 'assignment', 'file')
-    Returns:
-        (course, assignment, file) or (course, assignment, None) if file select is escaped with 'exit'
     """
+    # Load config for emoji level
+    icons = EmojiIcons()
     ctx = MagicMock()  # Dummy context for CanvasAPI
     api = CanvasAPI(ctx)
     def show_loading(msg):
@@ -232,8 +237,9 @@ def tui_main(
         h, w = stdscr.getmaxyx()
         stdscr.addstr(h//2, max(0, (w-len(msg))//2), msg, curses.A_BOLD)
         stdscr.refresh()
+    # Use tui_utils for icons and formatting
     course_cols = [
-        ("Fav", lambda c: "★" if c.get("is_favorite") else "", 3),
+        ("Fav", lambda c: icons.star if c.get("is_favorite") else "", 4),
         ("Name", lambda c: c.get("name", ""), 32),
         ("ID", lambda c: c.get("id", ""), 8),
         ("State", lambda c: c.get("workflow_state", ""), 10),
@@ -243,23 +249,22 @@ def tui_main(
         ("Account", lambda c: c.get("account_id", ""), 8),
     ]
     assignment_cols = [
-        ("✔", lambda a: "✔" if (a.get("submitted") or (a.get("submission") and a["submission"].get("workflow_state") in ["submitted", "graded"])) else ("✗" if a.get("missing") else ""), 3),
+        ("✔", lambda a: icons.format_assignment(a)[:2], 3),
         ("Name", lambda a: a.get("name", ""), 32),
         ("ID", lambda a: a.get("id", ""), 8),
         ("Due", lambda a: str(a.get("due_at") or '')[:16], 18),
         ("Points", lambda a: a.get("points_possible", ""), 8),
         ("State", lambda a: a.get("workflow_state", ""), 10),
-        ("Type", lambda a: (a.get("submission_types") or [""])[0], 12),
-        ("Desc", lambda a: (str(a.get("description") or '')[:20] + ("..." if a.get("description") and len(str(a.get("description"))) > 20 else "")), 24),
+        ("Type", lambda a: (a.get("submission_types") or ["any"])[0], 12),
+        # ("Desc", lambda a: (str(a.get("description") or '')[:20] + ("..." if a.get("description") and len(str(a.get("description"))) > 20 else "")), 24),
     ]
-    # State for selections
     course = assignment = file_path = None
     page = start_page
     while True:
         if page == "course":
             show_loading("Loading courses from Canvas API...")
             courses = sort_courses(api.get_courses())
-            course_sel = ListSelector(stdscr, courses, "Select course", key=format_course, mouse=True, columns=course_cols)
+            course_sel = ListSelector(stdscr, courses, "Select course", key=icons.format_course, mouse=True, columns=course_cols)
             course = course_sel.run()
             if not course or course == "__ESCAPE__":
                 return None, None, None
@@ -272,7 +277,7 @@ def tui_main(
             assign_sel = ListSelector(
                 stdscr, assignments,
                 f"Select assignment for {course.get('name', '')}",
-                key=format_assignment, mouse=True, columns=assignment_cols, allow_escape_back=True
+                key=icons.format_assignment, mouse=True, columns=assignment_cols, allow_escape_back=True
             )
             assignment = assign_sel.run()
             if not assignment:
@@ -283,33 +288,70 @@ def tui_main(
                 continue
             page = "file" if file_select_enabled else "done"
         elif page == "file":
-            file_path = file_selector(stdscr)
+            file_path = file_selector(stdscr, icons=icons)
             if not file_path:
                 if file_select_escape_behavior == "exit":
                     return course, assignment, None
                 else:
                     page = "assignment"
                     continue
-            # Instead of going to a summary screen, return immediately
             return course, assignment, file_path
         elif page == "done":
-            # Remove the summary/final screen entirely
             return course, assignment, file_path
 
 def run_tui(
     file_select_enabled=True,
     file_select_escape_behavior="back",
     start_page="course",
+    ctx=None,
 ):
     """
-    Entrypoint for running the TUI using curses.wrapper.
+    Entrypoint for running the TUI using curses.wrapper or fallback echo-based TUI.
     Args:
         file_select_enabled: if False, skip file select page
         file_select_escape_behavior: 'back' (go back to assignment) or 'exit' (return course/assignment, no file)
         start_page: which page to start on ('course', 'assignment', 'file')
+        ctx: typer.Context (required)
     Returns:
         (course, assignment, file) or (course, assignment, None) if file select is escaped with 'exit'
     """
+    if ctx is None:
+        raise ValueError("ctx (typer.Context) is required for run_tui. It must contain Canvas API token and host.")
+    # Ensure token and host are present
+    token = get_key("token", ctx)
+    host = get_key("host", ctx)
+    if not token or not host:
+        echo("Error: Missing token or host in context.", ctx=ctx, level="error")
+        return None, None, None
+    
+    fallback = get_key("tui_fallback", ctx)
+    if fallback:
+        from canvas_cli.api import CanvasAPI
+        api = CanvasAPI(ctx)
+        courses = sort_courses(api.get_courses())
+        if not courses:
+            return None, None, None
+        course = None
+        assignment = None
+        file_path = None
+        assignments = None
+        files = None
+        course, _, _ = fallback_tui(courses, ctx=ctx)
+        if not course:
+            return None, None, None
+        assignments = sort_assignments(api.get_assignments(course.get('id')))
+        assignment = None
+        file_path = None
+        if assignments:
+            assignment, _, _ = fallback_tui([course], assignments, ctx=ctx)
+            if not assignment:
+                return course, None, None
+        if file_select_enabled:
+            import os
+            files = [f for f in os.listdir('.') if os.path.isfile(f)]
+            _, _, file_path = fallback_tui([course], [assignment] if assignment else None, files, ctx=ctx)
+        return course, assignment, file_path
+    # Otherwise, use curses TUI
     result = {}
     def tui_wrapper(stdscr):
         result['value'] = tui_main(

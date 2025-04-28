@@ -151,3 +151,119 @@ def handle_config_list(ctx: typer.Context, global_: bool, local: bool, show_orig
         echo(output, ctx=ctx)
             
     echo(f"Listed config from {scope_text} scope", ctx=ctx)
+
+def handle_config_tui(ctx: typer.Context, global_: bool, local: bool):
+    """
+    Handler for 'canvas config tui' to set emoji level and fallback in the correct config file.
+    """
+    import importlib.util
+    import sys
+    import time
+    from pathlib import Path
+    # Determine config path
+    if global_ and local:
+        echo("Cannot set config in both global and local scope at the same time.", ctx=ctx)
+        raise typer.BadParameter("Cannot set config in both global and local scope at the same time.")
+    elif not global_ and not local:
+        # If neither is set, default to global
+        global_ = True
+        local = False
+    
+    config_path = get_config_path(global_, local)
+    config = load_config(config_path)
+    
+    # 1. Check for curses
+    curses_spec = importlib.util.find_spec("curses")
+    has_curses = curses_spec is not None
+    fallback = False
+    # Check if the user wants to use the fancy TUI or fallback to text TUI
+    if not has_curses:
+        echo("Curses (for the fancy TUI) is not installed on your system.", ctx=ctx)
+        echo("If you want the fancier TUI, install windows-curses with: pip install windows-curses", ctx=ctx)
+        echo("Otherwise, you can use the backup text TUI.", ctx=ctx)
+        ans = input("Do you want to install windows-curses and use the fancy TUI? (y/n): ").strip().lower()
+        if ans == "y":
+            echo("Please run: pip install windows-curses", ctx=ctx)
+            time.sleep(1)
+            sys.exit(0)
+        else:
+            fallback = True
+    else:
+        echo("Curses is installed, you can use the fancy TUI. (Sometimes the fancy tui doesn't support emojis e.g. on some Windows terminals)", ctx=ctx)
+        ans = input("Do you want to use the fancy TUI? (y/n): ").strip().lower()
+        if ans == "n":
+            fallback = True
+            
+    # 2. Emoji test (three levels)
+    if not fallback:
+        import curses
+        # Use curses for the fancy TUI
+        
+        def curses_emoji_test(stdscr):
+            stdscr.clear()
+            curses.curs_set(1)  # Show cursor
+            
+            # Setup colors
+            curses.start_color()
+            curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)
+            curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
+            
+            # Display emoji test
+            stdscr.addstr(1, 2, "Can you see this folder emoji? ->  📁  <- (should look like a folder)", curses.color_pair(1))
+            stdscr.addstr(2, 2, "Can you see this checkmark? ->  ✔  <- (should look like a checkmark)", curses.color_pair(1))
+            
+            stdscr.addstr(4, 2, "Please choose your preferred display style:", curses.color_pair(1))
+            stdscr.addstr(5, 2, "1. Full emoji: 📁 ✔ ❌ 🔄 📝", curses.color_pair(1))
+            stdscr.addstr(6, 2, "2. Basic symbols: ✓ ✗ » ...", curses.color_pair(1))
+            stdscr.addstr(7, 2, "3. Plain text: [DIR] [OK] [X] >>", curses.color_pair(1))
+            
+            stdscr.addstr(9, 2, "Enter your choice (1, 2, or 3): ", curses.color_pair(2))
+            stdscr.refresh()
+            
+            # Get user input
+            choice = ""
+            while choice not in ["1", "2", "3"]:
+                key = stdscr.getkey()
+                if key in ["1", "2", "3"]:
+                    choice = key
+                    stdscr.addstr(9, 32, choice)
+                    stdscr.refresh()
+            
+            return choice
+        
+        try:
+            choice = curses.wrapper(curses_emoji_test)
+        except Exception as e:
+            echo(f"Error in curses UI: {e}", ctx=ctx)
+            fallback = True
+            # Fall back to regular input if curses fails
+            choice = "2"  # Default to basic symbols
+    else:
+        # Regular terminal UI for emoji test
+        echo("\nCan you see this folder emoji? ->  📁  <- (should look like a folder)", ctx=ctx)
+        echo("Can you see this checkmark? ->  ✔  <- (should look like a checkmark)", ctx=ctx)
+        
+        echo("\nPlease choose your preferred display style:", ctx=ctx)
+        echo("1. Full emoji: 📁 ✔ ❌ 🔄 📝", ctx=ctx)
+        echo("2. Basic symbols: ✓ ✗ » ...", ctx=ctx)
+        echo("3. Plain text: [DIR] [OK] [X] >>", ctx=ctx)
+        
+        choice = ""
+        while choice not in ["1", "2", "3"]:
+            choice = input("Enter your choice (1, 2, or 3): ").strip()
+    
+    emoji_level = 3 - int(choice)  # Map 1->2, 2->1, 3->0
+    
+    # Show example based on their choice
+    if emoji_level == 2:
+        echo("\nYou selected: Full emoji style (📁 ✔ ❌)", ctx=ctx)
+    elif emoji_level == 1:
+        echo("\nYou selected: Basic symbols style (✓ ✗ »)", ctx=ctx)
+    else:
+        echo("\nYou selected: Plain text style ([DIR] [OK] [X])", ctx=ctx)
+            
+    config['tui_fallback'] = fallback
+    config['tui_emoji_level'] = emoji_level
+    save_config(config_path, config)
+    echo(f"TUI config updated in {config_path}", ctx=ctx)
+    echo(f"tui_fallback: {config['tui_fallback']}, tui_emoji_level: {config['tui_emoji_level']}", ctx=ctx)

@@ -15,16 +15,22 @@ def init_handler(
 ):
     """Handle pulling assignment information from Canvas, optionally using TUI"""
     if tui:
-        out = run_tui(file_select_enabled=True, file_select_escape_behavior="exit")
+        out = run_tui(file_select_enabled=True, file_select_escape_behavior="exit", ctx=ctx)
         
         if out is None:
             echo("Exiting...", ctx=ctx)
             raise typer.Abort()
         
         course, assignment, file_path = out
+        if course is None or assignment is None:
+            echo("Exiting...", ctx=ctx)
+            raise typer.Abort()
+        
         course_id = course.get("id", None)
         assignment_id = assignment.get("id", None)
-        file = file_path
+        
+        if file_path:
+            file = file_path
     else:
         # Get the course_id, assignment_id, and file from the context or configs
         course_id = get_key("course_id", ctx)
