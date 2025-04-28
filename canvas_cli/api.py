@@ -44,6 +44,76 @@ class CanvasAPI:
         # Initialize the context
         self.ctx = ctx
         
+        
+    
+    def get_courses(self, params: dict | None = None) -> List[Dict]:
+        """Get list of courses from Canvas API
+        
+        Args:
+            params: Optional parameters for the API request
+        
+        Returns:
+            List of course dictionaries
+        """
+
+        # Check if courses are already cached and not expired
+        if 'courses' in self.cache and (datetime.now() - self.cache_time.get('courses', datetime.min)).total_seconds() < self.cache_expiry:
+            return self.cache['courses']
+
+        url = f"{self.base_url}/courses"
+        if params is None:
+            params = {
+                'enrollment_state': 'active',
+                'include[]': 'favorites',
+                'per_page': 100 # TODO: Handle pagination if needed
+            }
+        
+        try:
+            response = requests.get(url, headers=self.headers, params=params)
+            response.raise_for_status()
+            courses = response.json()
+            
+            # Cache the courses
+            self.cache['courses'] = courses
+            self.cache_time['courses'] = datetime.now()
+            return courses
+        except requests.RequestException as e:
+            print(f"Error fetching courses: {e}")
+            return []
+        
+    def get_assignments(self, course_id: int, params: dict | None = None) -> List[Dict]:
+        """Get list of assignments for a course from Canvas API
+        
+        Args:
+            course_id: The Canvas course ID
+            
+        Returns:
+            List of assignment dictionaries
+        """
+
+        # Check if assignments are already cached and not expired
+        cache_key = f"assignments_{course_id}"
+        if cache_key in self.cache and (datetime.now() - self.cache_time.get(cache_key, datetime.min)).total_seconds() < self.cache_expiry:
+            return self.cache[cache_key]
+
+        url = f"{self.base_url}/courses/{course_id}/assignments"
+
+        
+        if params is None:
+            params = {'per_page': 100} # TODO: Handle pagination if needed
+        
+        try:
+            response = requests.get(url, headers=self.headers, params=params)
+            response.raise_for_status()
+            assignments = response.json()
+            
+            self.cache[cache_key] = assignments
+            self.cache_time[cache_key] = datetime.now()
+            return assignments
+        except requests.RequestException as e:
+            print(f"Error fetching assignments: {e}")
+            return []
+        
     def get_submissions(self, course_id: int, assignment_id: int, props: dict | None = None) -> Dict:
         """Get the current user's submission for an assignment
         

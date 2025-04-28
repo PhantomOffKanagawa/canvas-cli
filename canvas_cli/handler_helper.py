@@ -1,11 +1,70 @@
 from functools import wraps
 from typing import Any, Optional
+from datetime import datetime
 import typer
 from typing import Optional, TYPE_CHECKING
 import typer
 
 if TYPE_CHECKING:
     from canvas_cli.api import CanvasAPI  # only imported for type hints
+
+# ──────────────────────
+# DATA SORTING FUNCTIONS
+# ──────────────────────
+
+def sort_courses(courses: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # Filter out courses without a name (likely access restricted)
+    valid_courses = [c for c in courses if 'name' in c]
+    
+    # Sort by favorite status first, then by name
+    sorted_courses = sorted(valid_courses, 
+                            key=lambda c: (not c.get('is_favorite', False), c.get('name', '')))
+    
+    return sorted_courses
+
+def sort_assignments(assignments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # Filter out assignments that cannot be submitted
+    valid_assignments = [a for a in assignments if isinstance(a.get('submission_types'), list) and 'online_upload' in a.get('submission_types')] # type: ignore
+    
+    # Categorize assignments by status
+    now = datetime.now().isoformat()
+    future_unsubmitted = []  # Not submitted, not past due
+    future_submitted = []    # Submitted, not past due
+    past_unsubmitted = []    # Not submitted, past due
+    past_submitted = []      # Submitted, past due
+    locked = []              # Locked assignments
+    
+    for a in valid_assignments:
+        submitted = a.get('has_submitted_submissions', False)
+        due_at = a.get('due_at')
+        lock_at = a.get('lock_at')
+        
+        # Check if assignment is locked
+        is_locked = (lock_at and lock_at < now)
+        
+        # Check if assignment is past due
+        past_due = (due_at and due_at < now)
+        
+        # Sort into appropriate category based on due date and submission status
+        if is_locked:
+            locked.append(a)
+        elif not past_due and not submitted:
+            future_unsubmitted.append(a)
+        elif not past_due and submitted:
+            future_submitted.append(a)
+        elif past_due and not submitted:
+            past_unsubmitted.append(a)
+        else:  # past_due and submitted
+            past_submitted.append(a)
+    
+    # Sort each category by due date
+    for assignment_list in [future_unsubmitted, future_submitted, past_unsubmitted, past_submitted, locked]:
+        assignment_list.sort(key=lambda a: a.get('due_at') or '9999-12-31')
+    
+    # Combine lists with priority order
+    sorted_assignments = future_unsubmitted + future_submitted + past_unsubmitted + past_submitted + locked
+
+    return sorted_assignments
 
 # ──────────────────────
 # CONTEXT MANAGER
