@@ -107,21 +107,47 @@ def echo(message: str, ctx: Optional[typer.Context], level: str = "info"):
         print(message)
 
 # Decorator to handle the cascading config resolution
-# Get the cascading config value for a given key
-def with_config_resolution(*keys):
-    """
-    Decorator to resolve configuration values for the given keys.
-    """
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):    
-            # Import here to avoid circular import
-            from handlers.config_handler import get_cascading_config_value
-            for key in keys:
-                # For each key in the list, check if it's in kwargs
-                if kwargs.get(key) is None:
-                    # If not, get the cascading config value for that key
-                    kwargs[key] = get_cascading_config_value(key)
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
+# def with_config_resolution(*keys):
+#     """
+#     Decorator to resolve configuration values for the given keys.
+#     The resolution order is:
+#     1. Explicit CLI parameters
+#     2. Context params (from parent commands)
+#     3. Config files
+#     """
+#     def decorator(func):
+#         @wraps(func)
+#         def wrapper(ctx: typer.Context, *args, **kwargs):
+#             # Import here to avoid circular import
+#             from handlers.config_handler import get_cascading_config_value
+#             import inspect
+            
+#             # Get the function's signature
+#             sig = inspect.signature(func)
+#             param_names = list(sig.parameters.keys())[1:]  # Skip 'ctx'
+            
+#             resolved_values = {}
+#             for key in keys:
+#                 # Skip keys that are provided as positional arguments
+#                 if key in param_names[:len(args)]:
+#                     continue
+                
+#                 # Skip if value is explicitly provided in kwargs
+#                 if key in kwargs and kwargs[key] is not None:
+#                     resolved_values[key] = kwargs[key]
+#                 # Check if the value exists in ctx.params
+#                 elif ctx.params and key in ctx.params and ctx.params[key] is not None:
+#                     resolved_values[key] = ctx.params[key]
+#                 else:
+#                     # Fall back to cascading config value
+#                     value = get_cascading_config_value(key)
+#                     if value is not None:
+#                         resolved_values[key] = value
+            
+#             # Update kwargs with resolved values
+#             kwargs.update(resolved_values)
+            
+#             # Call the function with both ctx, original args, and the combined kwargs
+#             return func(ctx, *args, **kwargs)
+#         return wrapper
+#     return decorator
