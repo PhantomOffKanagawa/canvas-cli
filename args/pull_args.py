@@ -30,6 +30,7 @@ def pull(
     # Selection Options
     # ─────────────────────
     submission_number: int = typer.Option(None, "--submission-number", "-sn", help="[Selection] Canvas Submission ID (0 is most recent, negative values are from latest submission)."),
+    tui: bool = typer.Option(False, "--tui", "-tui", help="Use interactive TUI to select course/assignment/file"),
 ):
     """
     Download assignment details from Canvas.
@@ -39,5 +40,4 @@ def pull(
     - Output Options
     - Selection Options
     """
-    # If you need to call handle_push, ensure you provide all required parameters
-    handle_pull(ctx=ctx, course_id=course_id, assignment_id=assignment_id, output_dir=output_dir)
+    handle_pull(ctx=ctx, course_id=course_id, assignment_id=assignment_id, output_dir=output_dir, tui=tui)

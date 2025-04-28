@@ -7,14 +7,18 @@ from pathlib import Path
 from canvas_cli.handler_helper import echo, get_api
 from handlers.config_handler import get_key
 from canvas_cli.api import CanvasAPI
+from canvas_cli.tui import run_tui
 
 
 # ──────────────────────
 # HANDLER FUNCTIONS
 # ──────────────────────
 
-def handle_pull(ctx: typer.Context, course_id: Optional[int], assignment_id: Optional[int], output_dir: Optional[str]):
-    """Pull a file from an assignment in Canvas LMS"""
+def handle_pull(ctx: typer.Context, course_id: Optional[int], assignment_id: Optional[int], output_dir: Optional[str], tui: bool = False):
+    """Pull a file from an assignment in Canvas LMS, optionally using TUI"""
+    if tui:
+        run_tui()
+        return
     
     # ──────────────────────
     # INITIALIZATION

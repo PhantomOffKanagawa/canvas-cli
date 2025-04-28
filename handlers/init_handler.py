@@ -4,14 +4,19 @@ from typing import Optional
 from canvas_cli.handler_helper import echo
 from handlers.config_handler import get_key, load_config, save_config
 from canvas_cli.constants import LOCAL_CONFIG_PATH
+from canvas_cli.tui import run_tui
 
 def init_handler(
     ctx: typer.Context,
     course_id: Optional[int],
     assignment_id: Optional[int],
     file: Optional[str],
+    tui: bool = False,
 ):
-    """Handle pulling assignment information from Canvas"""
+    """Handle pulling assignment information from Canvas, optionally using TUI"""
+    if tui:
+        run_tui()
+        return
     
     # Get the course_id, assignment_id, and file from the context or configs
     course_id = get_key("course_id", ctx)

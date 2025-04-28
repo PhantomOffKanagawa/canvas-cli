@@ -7,15 +7,19 @@ from pathlib import Path
 from canvas_cli.handler_helper import echo, get_api
 from handlers.config_handler import get_key
 from canvas_cli.api import CanvasAPI
+from canvas_cli.tui import run_tui
 
 
 # ──────────────────────
 # HANDLER FUNCTIONS
 # ──────────────────────
 
-def handle_push(ctx: typer.Context, course_id: Optional[int], assignment_id: Optional[int], file: Optional[str]):
-    """Push a file to an assignment in Canvas LMS"""
-    
+def handle_push(ctx: typer.Context, course_id: Optional[int], assignment_id: Optional[int], file: Optional[str], tui: bool = False):
+    """Push a file to an assignment in Canvas LMS, optionally using TUI"""
+    if tui:
+        run_tui()
+        return
+
     # Get the course_id, assignment_id, and file from the context or configs
     course_id = get_key("course_id", ctx)
     assignment_id = get_key("assignment_id", ctx)

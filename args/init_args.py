@@ -21,6 +21,9 @@ def pull_callback(
     file: Optional[str] = Option(
         None, "--file", "-f", help="Path to the file to be submitted"
     ),
+    tui: bool = Option(
+        False, "--tui", "-tui", help="Use interactive TUI to select course/assignment/file"
+    ),
 ):
     """Initialize a folder with the course and assignment ID"""
     init_handler(
@@ -28,4 +31,5 @@ def pull_callback(
         course_id=course_id,
         assignment_id=assignment_id,
         file=file,
+        tui=tui,
     )

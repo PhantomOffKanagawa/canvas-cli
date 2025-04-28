@@ -23,6 +23,9 @@ def push_callback(
     file: Optional[str] = Option(
         None, "--file", "-f", help="Path to the file to be submitted"
     ),
+    tui: bool = Option(
+        False, "--tui", "-tui", help="Use interactive TUI to select course/assignment/file"
+    ),
 ):
     """Submit an assignment to Canvas"""
     handle_push(
@@ -30,4 +33,5 @@ def push_callback(
         course_id=course_id,
         assignment_id=assignment_id,
         file=file,
+        tui=tui,
     )
