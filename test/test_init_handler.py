@@ -107,6 +107,9 @@ def test_init_handler_keyboard_interrupt(mock_context, clean_config):
 def test_init_handler_user_aborts(mock_context, clean_config):
     """Test init handler when user aborts the configuration"""
     
+    # Setup
+    runner = CliRunner()
+    
     # Mock user inputs, but say "no" at the confirmation
     user_inputs = [
         "Test Course",
@@ -117,14 +120,12 @@ def test_init_handler_user_aborts(mock_context, clean_config):
         "no"  # User does not confirm
     ]
     
-    with patch('builtins.input', side_effect=user_inputs), \
-            patch('builtins.print') as mock_print:
+    with patch('builtins.input', side_effect=user_inputs):
+        # Execute using CLI runner to capture output
+        result = runner.invoke(app, ["init"], obj=mock_context)
         
-        # Execute
-        init_handler(mock_context, None, None, None)
-        
-        # Assert the config was not saved
-        mock_print.assert_any_call("Aborted.")
+        # Assert
+        assert "Aborted." in result.output
         assert not LOCAL_CONFIG_PATH.exists()
 
 def test_init_handler_save_error(mock_context, clean_config):

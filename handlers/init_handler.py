@@ -66,14 +66,14 @@ Press ^C at any time to quit."""
         config = prompt_for_value_and_set("File: ", "file", template_config, config, file)
         
         # Show potential configuration to the user
-        print(f"About to write to {LOCAL_CONFIG_PATH}:\n")
-        print(json.dumps(config, indent=2))
-        print()
+        echo(f"About to write to {LOCAL_CONFIG_PATH}:\n", ctx=ctx)
+        echo(json.dumps(config, indent=2), ctx=ctx)
+        echo("\n", ctx=ctx)
         
         # Ask for confirmation before writing the file
         ok = input("Is this OK? (yes) ").strip().lower() or "yes"
         if ok != "yes" and ok != "y":
-            print("Aborted.")
+            echo("Aborted.", ctx=ctx)
             return
         
     except KeyboardInterrupt:
@@ -89,4 +89,4 @@ Press ^C at any time to quit."""
         echo(f"Error saving configuration: {e}", ctx=ctx)
         raise typer.Abort()
     
-    print()
+    echo("\n", ctx=ctx)
