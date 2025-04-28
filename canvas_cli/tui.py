@@ -209,20 +209,29 @@ def file_selector(stdscr, start_dir="."):
 # ---------------------------------------------------
 # Main TUI entrypoint: course, assignment, file select
 # ---------------------------------------------------
-def tui_main(stdscr):
+def tui_main(
+    stdscr,
+    file_select_enabled=True,
+    file_select_escape_behavior="back",  # 'back' or 'exit'
+    start_page="course",  # 'course', 'assignment', 'file'
+):
     """
     Main TUI workflow: select course, then assignment, then file.
-    Shows loading messages while waiting for API.
+    Args:
+        stdscr: curses window
+        file_select_enabled: if False, skip file select page
+        file_select_escape_behavior: 'back' (go back to assignment) or 'exit' (return course/assignment, no file)
+        start_page: which page to start on ('course', 'assignment', 'file')
+    Returns:
+        (course, assignment, file) or (course, assignment, None) if file select is escaped with 'exit'
     """
     ctx = MagicMock()  # Dummy context for CanvasAPI
     api = CanvasAPI(ctx)
-    # Helper to show a loading message centered on the screen
     def show_loading(msg):
         stdscr.clear()
         h, w = stdscr.getmaxyx()
         stdscr.addstr(h//2, max(0, (w-len(msg))//2), msg, curses.A_BOLD)
         stdscr.refresh()
-    # Table columns for courses and assignments (header, lambda, width)
     course_cols = [
         ("Fav", lambda c: "★" if c.get("is_favorite") else "", 3),
         ("Name", lambda c: c.get("name", ""), 32),
@@ -234,7 +243,6 @@ def tui_main(stdscr):
         ("Account", lambda c: c.get("account_id", ""), 8),
     ]
     assignment_cols = [
-        # Mark as completed if 'submitted' or submission.workflow_state is submitted/graded
         ("✔", lambda a: "✔" if (a.get("submitted") or (a.get("submission") and a["submission"].get("workflow_state") in ["submitted", "graded"])) else ("✗" if a.get("missing") else ""), 3),
         ("Name", lambda a: a.get("name", ""), 32),
         ("ID", lambda a: a.get("id", ""), 8),
@@ -244,48 +252,74 @@ def tui_main(stdscr):
         ("Type", lambda a: (a.get("submission_types") or [""])[0], 12),
         ("Desc", lambda a: (str(a.get("description") or '')[:20] + ("..." if a.get("description") and len(str(a.get("description"))) > 20 else "")), 24),
     ]
-    # Main course selection loop
+    # State for selections
+    course = assignment = file_path = None
+    page = start_page
     while True:
-        show_loading("Loading courses from Canvas API...")
-        courses = sort_courses(api.get_courses())
-        course_sel = ListSelector(stdscr, courses, "Select course", key=format_course, mouse=True, columns=course_cols)
-        course = course_sel.run()
-        if not course or course == "__ESCAPE__":
-            return
-        # Assignment selection loop for chosen course
-        while True:
-            show_loading(f"Loading assignments for {course['name']}...")
-            assignments = sort_assignments(api.get_assignments(course['id']))
+        if page == "course":
+            show_loading("Loading courses from Canvas API...")
+            courses = sort_courses(api.get_courses())
+            course_sel = ListSelector(stdscr, courses, "Select course", key=format_course, mouse=True, columns=course_cols)
+            course = course_sel.run()
+            if not course or course == "__ESCAPE__":
+                return None, None, None
+            page = "assignment"
+        elif page == "assignment":
+            if not course:
+                return None, None, None
+            show_loading(f"Loading assignments for {course.get('name', '')}...")
+            assignments = sort_assignments(api.get_assignments(course.get('id')))
             assign_sel = ListSelector(
                 stdscr, assignments,
-                f"Select assignment for {course['name']}",
+                f"Select assignment for {course.get('name', '')}",
                 key=format_assignment, mouse=True, columns=assignment_cols, allow_escape_back=True
             )
             assignment = assign_sel.run()
-            if not assignment or assignment == "__ESCAPE__":
-                break
-            # File selection page
+            if not assignment:
+                page = "course"
+                continue
+            if assignment == "__ESCAPE__":
+                page = "course"
+                continue
+            page = "file" if file_select_enabled else "done"
+        elif page == "file":
             file_path = file_selector(stdscr)
             if not file_path:
-                continue
-            # Show summary and exit
-            stdscr.clear()
-            stdscr.addstr(0, 0, f"Selected course_id: {course['id']}")
-            stdscr.addstr(1, 0, f"Selected assignment_id: {assignment['id']}")
-            stdscr.addstr(2, 0, f"Selected file: {file_path}")
-            stdscr.addstr(4, 0, "Press any key to exit.")
-            stdscr.refresh()
-            stdscr.getch()
-            return
+                if file_select_escape_behavior == "exit":
+                    return course, assignment, None
+                else:
+                    page = "assignment"
+                    continue
+            # Instead of going to a summary screen, return immediately
+            return course, assignment, file_path
+        elif page == "done":
+            # Remove the summary/final screen entirely
+            return course, assignment, file_path
 
-# -----------------------------
-# Entrypoint for running TUI
-# -----------------------------
-def run_tui():
+def run_tui(
+    file_select_enabled=True,
+    file_select_escape_behavior="back",
+    start_page="course",
+):
     """
     Entrypoint for running the TUI using curses.wrapper.
+    Args:
+        file_select_enabled: if False, skip file select page
+        file_select_escape_behavior: 'back' (go back to assignment) or 'exit' (return course/assignment, no file)
+        start_page: which page to start on ('course', 'assignment', 'file')
+    Returns:
+        (course, assignment, file) or (course, assignment, None) if file select is escaped with 'exit'
     """
-    curses.wrapper(tui_main)
+    result = {}
+    def tui_wrapper(stdscr):
+        result['value'] = tui_main(
+            stdscr,
+            file_select_enabled=file_select_enabled,
+            file_select_escape_behavior=file_select_escape_behavior,
+            start_page=start_page,
+        )
+    curses.wrapper(tui_wrapper)
+    return result.get('value')
 
 if __name__ == "__main__":
     run_tui()

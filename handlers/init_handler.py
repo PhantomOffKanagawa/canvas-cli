@@ -15,13 +15,21 @@ def init_handler(
 ):
     """Handle pulling assignment information from Canvas, optionally using TUI"""
     if tui:
-        run_tui()
-        return
-    
-    # Get the course_id, assignment_id, and file from the context or configs
-    course_id = get_key("course_id", ctx)
-    assignment_id = get_key("assignment_id", ctx)
-    file = get_key("file", ctx)
+        out = run_tui(file_select_enabled=True, file_select_escape_behavior="exit")
+        
+        if out is None:
+            echo("Exiting...", ctx=ctx)
+            raise typer.Abort()
+        
+        course, assignment, file_path = out
+        course_id = course.get("id", None)
+        assignment_id = assignment.get("id", None)
+        file = file_path
+    else:
+        # Get the course_id, assignment_id, and file from the context or configs
+        course_id = get_key("course_id", ctx)
+        assignment_id = get_key("assignment_id", ctx)
+        file = get_key("file", ctx)
     
     # Get attributes in npm style
     try:

@@ -17,8 +17,18 @@ from canvas_cli.tui import run_tui
 def handle_push(ctx: typer.Context, course_id: Optional[int], assignment_id: Optional[int], file: Optional[str], tui: bool = False):
     """Push a file to an assignment in Canvas LMS, optionally using TUI"""
     if tui:
-        run_tui()
-        return
+        out = run_tui(file_select_enabled=True, file_select_escape_behavior="exit")
+        
+        if out is None:
+            echo("Exiting...", ctx=ctx)
+            raise typer.Abort()
+        
+        course, assignment, file_path = out
+        course_id = course.get("id", None)
+        assignment_id = assignment.get("id", None)
+        
+        if file_path:
+            file = file_path
 
     # Get the course_id, assignment_id, and file from the context or configs
     course_id = get_key("course_id", ctx)
