@@ -33,12 +33,18 @@ Please, please, PLEASE [report any bugs or issues you encounter](https://github.
 ## 🛠️ Installation
 
 ```bash
+# For use just use
+pip install canvas-cmd
+
+# If you want all features but a slightly larger/longer install
+pip install "canvas-cmd[full]"
+
 # Clone this repository
 git clone https://github.com/PhantomOffKanagawa/canvas-cli.git
 cd canvas-cli
 
 # Install in development mode
-pip install -e .
+pip install -e ".[full]"
 ```
 
 After installation, the `canvas` command will be available in your terminal!
@@ -118,6 +124,7 @@ canvas push -cid 123456 -aid 789012 -f solution.py
 
 ## 🚑 Troubleshooting
 
+- **error: externally-managed-environment**: Make sure you are in a virtual environment or install to a base environment or with a tool like pipx.
 - **Authentication Error**: Make sure your API token is valid and has the required permissions
 - **File Not Found**: Double-check the path to your submission file
 - **Course/Assignment Not Found**: Verify the course and assignment IDs
